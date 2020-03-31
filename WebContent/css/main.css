@@ -1,0 +1,49 @@
+@charset "UTF-8";
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  ceil((@font-size-base * 1.25))
+}
+/*--------------------------------------------------------------------------------------*/
+/* Style the section */
+section
+{
+  margin-top: 5%;
+  float: left;
+  width: 20%;
+  background-color: gray;
+  padding: 20px;
+  height: 800px;
+}
+ul
+{
+	list-style-type: none;
+}
+/*--------------------------------------------------------------------------------------*/
+/* Style the article */
+article {
+  margin-top: 5%;
+  float: right;
+  padding: 20px;
+  width: 80%;
+  background-color: #60C7D0;
+  height: 800px;
+}
+/*--------------------------------------------------------------------------------------*/
+/* Style the footer */
+footer {
+  background-color: #F2EFE8;
+  padding: 10px;
+  text-align: center;
+  color: white;
+}
+
+
+@media (max-width: 600px) {
+  nav, article {
+    width: 100%;
+    height: auto;
+  }
+}

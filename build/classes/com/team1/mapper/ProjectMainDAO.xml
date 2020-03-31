@@ -1,0 +1,527 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 인터페이스 IProjectMainDAO 를 구체화시킬 마이바이트 xml -->
+<mapper namespace="com.team1.pro.main.IProjectMainDAO">
+
+	<!-- 모집 페이지 데이터 -->
+	<select id="mainProjectList1" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+     	     , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1), 'YYYY-MM-DD') AS STARTDATE
+     		 , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+     		 , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+     		 , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT, U.USID AS USID
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+    		LEFT JOIN GENDER G
+    		ON C.GID = G.GID
+        		LEFT JOIN ONLINERATE O
+        		ON C.OID = O. OID
+           		 LEFT JOIN PRO_PERIOD P
+            		ON C.PROID = P.PROID
+               		 LEFT JOIN PEOPLE PE
+               		 ON C.PEOID = PE.PEOID
+		WHERE PID NOT IN(SELECT PID
+             			 FROM PRO_PROGRESS)
+		ORDER BY PID DESC
+	</select>
+
+	<!-- 추가모집 페이지 데이터 -->
+	<select id="mainProjectList2" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		      , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		      , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		      , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		      , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		      , TRUNC(S.PEDATE-SYSDATE) AS RESTDATE
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		            LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		                LEFT JOIN PEOPLE PE
+		                ON C.PEOID = PE.PEOID
+		                    LEFT JOIN PRO_PROGRESS S
+		                    ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE TO_DATE(PEDATE) > SYSDATE)
+		ORDER BY PID DESC  	
+	</select>
+	
+	<!-- 진행 페이지 데이터 -->
+	<select id="mainProjectList3" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		      , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		      , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		      , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		      , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		      , TRUNC(S.PEDATE-SYSDATE) AS RESTDATE, U.USID AS USID
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		            LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		                LEFT JOIN PEOPLE PE
+		                ON C.PEOID = PE.PEOID
+		                    LEFT JOIN PRO_PROGRESS S
+		                    ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE TO_DATE(PEDATE) > SYSDATE)
+		ORDER BY PID DESC  	
+	</select>
+	
+	<!-- 완료 페이지 데이터 -->
+	<select id="mainProjectList4" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		     , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT, U.USID AS USID
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		    LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		        LEFT JOIN PRO_PERIOD P
+		        ON C.PROID = P.PROID
+		            LEFT JOIN PEOPLE PE
+		            ON C.PEOID = PE.PEOID
+		                LEFT JOIN PRO_PROGRESS S
+		                ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE SYSDATE >= TO_DATE(PEDATE))
+		ORDER BY PID DESC	  
+	</select>
+	
+	<!-- 내가 참여하는 대기프로젝트 -->
+	<select id="myMainProjectListMozip" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+			 , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1), 'YYYY-MM-DD') AS STARTDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		     , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1) + P.PROPERIOD, 'YYYY-MM-DD') AS FINISHDATE
+		     , U.USID AS USID
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		            LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		                LEFT JOIN PEOPLE PE
+		                ON C.PEOID = PE.PEOID
+		                    LEFT JOIN PRO_PROGRESS S
+		                    ON C.PID = S.PID
+		WHERE C.PID NOT IN(SELECT PID
+		                   FROM PRO_PROGRESS)
+		  AND C.PID IN (SELECT PID
+		                FROM PRO_JOIN
+		                WHERE PJID NOT IN (SELECT PJID
+		                                   FROM PRO_EXIT)
+		                  AND USID = #{usId})
+		ORDER BY PID DESC
+	</select>
+	
+	<!-- 내가 참여하는 진행프로젝트 -->
+	<select id="myMainProjectListProgress" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+			 , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1), 'YYYY-MM-DD') AS STARTDATE
+		     , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		     , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1) + P.PROPERIOD, 'YYYY-MM-DD') AS FINISHDATE
+		     , U.USID AS USID, TRUNC(S.PEDATE-SYSDATE) AS RESTDATE
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		            LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		                LEFT JOIN PEOPLE PE
+		                ON C.PEOID = PE.PEOID
+		                    LEFT JOIN PRO_PROGRESS S
+		                    ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE TO_DATE(PEDATE) > SYSDATE
+		             AND PID IN (SELECT PID
+		                        FROM PRO_JOIN
+		                        WHERE USID=#{usId}
+		                        AND PJID NOT IN (SELECT PJID
+		                                          FROM PRO_EXIT
+		                                          WHERE PJID IN (SELECT PJID
+		                                                         FROM PRO_JOIN
+		                                                         WHERE USID=#{usId}))))
+		ORDER BY PID DESC
+	</select>
+	
+	<!-- 내가 참여한 완료 프로젝트 -->
+	<select id="myMainProjectListFinish" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		     , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT, U.USID AS USID
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		            LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		                LEFT JOIN PEOPLE PE
+		                ON C.PEOID = PE.PEOID
+		                    LEFT JOIN PRO_PROGRESS S
+		                    ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE SYSDATE >= TO_DATE(PEDATE)
+		             AND PID IN (SELECT PID
+		                        FROM PRO_JOIN
+		                        WHERE USID=#{usId}
+		                        AND PJID NOT IN (SELECT PJID
+		                                          FROM PRO_EXIT
+		                                          WHERE PJID IN (SELECT PJID
+		                                                         FROM PRO_JOIN
+		                                                         WHERE USID=#{usId}))))
+		ORDER BY PID DESC		
+	</select>
+	
+	<!-- 프로젝트 모집 메인에서의 acName, sname, skName 검색 -->
+	<select id="findListMozip" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		     , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1), 'YYYY-MM-DD') AS STARTDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		FROM (SELECT *
+		        FROM PRO_CREATE
+		        WHERE PID IN (SELECT PID
+		        FROM PRO_SKILL
+		        WHERE SKID IN (SELECT SKID
+		        FROM SKILL
+		        WHERE SKNAME LIKE '%'||UPPER(#{skContent})||'%'))
+		        OR PID IN (SELECT PID  
+		        FROM PRO_BADGE
+		        WHERE GAINACID IN (SELECT GAINACID
+		        FROM USER_ACHIEVEMENT
+		        WHERE ACID IN (SELECT ACID
+		        FROM ACHIEVEMENT
+		        WHERE ACNAME LIKE '%'||UPPER(#{acContent})||'%')))
+		        OR PID IN (SELECT PID
+		        FROM PRO_SUBJECT_INSERT
+		        WHERE SNAME LIKE '%'||UPPER(#{suContent})||'%')) C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		         LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		             LEFT JOIN PEOPLE PE
+		             ON C.PEOID = PE.PEOID
+		WHERE PID NOT IN(SELECT PID
+		                 FROM PRO_PROGRESS)
+		ORDER BY PID DESC                 
+	</select>
+	
+	<!-- 프로젝트 모집 메인에서의 acName, sname, skName를 제외한 나머지 검색 -->
+	<select id="findListAddMozip" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT *
+		FROM
+		(
+			SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+			     , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1), 'YYYY-MM-DD') AS STARTDATE
+			     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+			     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+			     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+			FROM PRO_CREATE C LEFT JOIN USERINSERT U
+			ON C.ID = U.USID
+			    LEFT JOIN GENDER G
+			    ON C.GID = G.GID
+			        LEFT JOIN ONLINERATE O
+			        ON C.OID = O. OID
+			         LEFT JOIN PRO_PERIOD P
+			            ON C.PROID = P.PROID
+			             LEFT JOIN PEOPLE PE
+			             ON C.PEOID = PE.PEOID
+			WHERE PID NOT IN(SELECT PID
+			                 FROM PRO_PROGRESS)
+		)
+		WHERE UPPER(${findCategory}) LIKE '%'|| UPPER(#{findValue}) ||'%'
+		ORDER BY PID DESC
+	</select>
+	<!-- 프로젝트 추가모집 메인에서의 acName, sname, skName 검색 -->
+	<select id="findListMozipAdd" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		     , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1), 'YYYY-MM-DD') AS STARTDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		FROM (SELECT *
+		        FROM PRO_CREATE
+		        WHERE PID IN (SELECT PID
+		        FROM PRO_SKILL
+		        WHERE SKID IN (SELECT SKID
+		        FROM SKILL
+		        WHERE SKNAME LIKE '%'||UPPER(#{skContent})||'%'))
+		        OR PID IN (SELECT PID  
+		        FROM PRO_BADGE
+		        WHERE GAINACID IN (SELECT GAINACID
+		        FROM USER_ACHIEVEMENT
+		        WHERE ACID IN (SELECT ACID
+		        FROM ACHIEVEMENT
+		        WHERE ACNAME LIKE '%'||UPPER(#{acContent})||'%')))
+		        OR PID IN (SELECT PID
+		        FROM PRO_SUBJECT_INSERT
+		        WHERE SNAME LIKE '%'||UPPER(#{suContent})||'%')) C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		         LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		             LEFT JOIN PEOPLE PE
+		             ON C.PEOID = PE.PEOID
+		WHERE PID NOT IN(SELECT PID
+		                 FROM PRO_PROGRESS)
+		ORDER BY PID DESC                 
+	</select>
+	
+	<!-- 프로젝트 추가모집 메인에서의 acName, sname, skName를 제외한 나머지 검색 -->
+	<select id="findListAddMozipAdd" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT *
+		FROM
+		(
+			SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+			     , TO_CHAR(ADD_MONTHS(C.CREATEDATE,1), 'YYYY-MM-DD') AS STARTDATE
+			     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+			     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+			     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+			FROM PRO_CREATE C LEFT JOIN USERINSERT U
+			ON C.ID = U.USID
+			    LEFT JOIN GENDER G
+			    ON C.GID = G.GID
+			        LEFT JOIN ONLINERATE O
+			        ON C.OID = O. OID
+			         LEFT JOIN PRO_PERIOD P
+			            ON C.PROID = P.PROID
+			             LEFT JOIN PEOPLE PE
+			             ON C.PEOID = PE.PEOID
+			WHERE PID NOT IN(SELECT PID
+			                 FROM PRO_PROGRESS)
+		)
+		WHERE UPPER(${findCategory}) LIKE '%'|| UPPER(#{findValue}) ||'%'
+		ORDER BY PID DESC
+	</select>
+	
+	<!-- 프로젝트 진행 메인에서의 acName, sname, skName 검색 -->
+	<select id="findListProgress" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		     , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		     , TRUNC(S.PEDATE-SYSDATE) AS RESTDATE
+		FROM (SELECT *
+		        FROM PRO_CREATE
+		        WHERE PID IN (SELECT PID
+		        FROM PRO_SKILL
+		        WHERE SKID IN (SELECT SKID
+		        FROM SKILL
+		        WHERE SKNAME LIKE '%'||UPPER(#{skContent})||'%'))
+		        OR PID IN (SELECT PID  
+		        FROM PRO_BADGE
+		        WHERE GAINACID IN (SELECT GAINACID
+		        FROM USER_ACHIEVEMENT
+		        WHERE ACID IN (SELECT ACID
+		        FROM ACHIEVEMENT
+		        WHERE ACNAME LIKE '%'||UPPER(#{acContent})||'%')))
+		        OR PID IN (SELECT PID
+		        FROM PRO_SUBJECT_INSERT
+		        WHERE SNAME LIKE '%'||UPPER(#{suContent})||'%')) C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		            LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		                LEFT JOIN PEOPLE PE
+		                ON C.PEOID = PE.PEOID
+		                    LEFT JOIN PRO_PROGRESS S
+		                    ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE TO_DATE(PEDATE) > SYSDATE)
+		  AND ${findCategory} LIKE '%'||#{findValue}||'%' 
+		ORDER BY PID DESC              
+	</select>
+	
+	<!-- 프로젝트 진행 메인에서의 acName, sname, skName를 제외한 나머지 검색 -->
+	<select id="findListAddProgress" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		     , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		     , TRUNC(S.PEDATE-SYSDATE) AS RESTDATE
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		    LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		        LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		            LEFT JOIN PRO_PERIOD P
+		            ON C.PROID = P.PROID
+		                LEFT JOIN PEOPLE PE
+		                ON C.PEOID = PE.PEOID
+		                	LEFT JOIN PRO_PROGRESS S
+		                    ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE TO_DATE(PEDATE) > SYSDATE)
+		  AND ${findCategory} LIKE '%'||#{findValue}||'%' 
+		ORDER BY PID DESC
+	</select>
+	
+	<!-- 프로젝트 완료 메인에서의 acName, sname, skName 검색 -->
+	<select id="findListFinish" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		     , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		     , U.USID AS USID
+		FROM (SELECT *
+		        FROM PRO_CREATE
+		        WHERE PID IN (SELECT PID
+		        FROM PRO_SKILL
+		        WHERE SKID IN (SELECT SKID
+		        FROM SKILL
+		        WHERE SKNAME LIKELIKE '%'||UPPER(#{skContent})||'%'))
+		        OR PID IN (SELECT PID  
+		        FROM PRO_BADGE
+		        WHERE GAINACID IN (SELECT GAINACID
+		        FROM USER_ACHIEVEMENT
+		        WHERE ACID IN (SELECT ACID
+		        FROM ACHIEVEMENT
+		        WHERE ACNAME LIKE '%'||UPPER(#{acContent})||'%')))
+		        OR PID IN (SELECT PID
+		        FROM PRO_SUBJECT_INSERT
+		        WHERE SNAME LIKE '%'||UPPER(#{suContent})||'%')) C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		    LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		        LEFT JOIN PRO_PERIOD P
+		        ON C.PROID = P.PROID
+		            LEFT JOIN PEOPLE PE
+		            ON C.PEOID = PE.PEOID
+		                LEFT JOIN PRO_PROGRESS S
+		                ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE SYSDATE >= TO_DATE(PEDATE))
+		AND ${findCategory} LIKE '%'||#{findValue}||'%' 
+		ORDER BY PID DESC                 
+	</select>
+	
+	<!-- 프로젝트 완료 메인에서의 acName, sname, skName를 제외한 나머지 검색 -->
+	<select id="findListAddFinish" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT C.PID AS PID, C.RNAME AS RNAME, TO_CHAR(C.CREATEDATE, 'YYYY-MM-DD') AS CREATEDATE
+		     , TO_CHAR(S.PPDATE, 'YYYY-MM-DD') AS PPDATE, TO_CHAR(S.PEDATE, 'YYYY-MM-DD') AS PEDATE
+		     , C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL, C.PCONTENTS AS PCONTENTS
+		     , C.PADDRESS AS PADDRESS, U.NICKNAME AS NICKNAME, G.GSELECT AS GSELECT
+		     , O.ONRATE AS ONRATE, P.PROPERIOD AS PROPERIOD, PE.PEOCOUNT AS PEOCOUNT
+		     , U.USID AS USID
+		FROM PRO_CREATE C LEFT JOIN USERINSERT U
+		ON C.ID = U.USID
+		LEFT JOIN GENDER G
+		    ON C.GID = G.GID
+		    LEFT JOIN ONLINERATE O
+		        ON C.OID = O. OID
+		        LEFT JOIN PRO_PERIOD P
+		        ON C.PROID = P.PROID
+		            LEFT JOIN PEOPLE PE
+		            ON C.PEOID = PE.PEOID
+		                LEFT JOIN PRO_PROGRESS S
+		                ON C.PID = S.PID
+		WHERE C.PID IN(SELECT PID
+		             FROM PRO_PROGRESS
+		             WHERE SYSDATE >= TO_DATE(PEDATE))
+		AND ${findCategory} LIKE '%'||#{findValue}||'%' 
+		ORDER BY PID DESC   
+	</select>
+	
+
+	<!-- 프로젝트에 등록된 칭호 -->
+	<select id="acName" resultType="java.lang.String">
+		SELECT ACNAME
+		FROM ACHIEVEMENT
+		WHERE ACID IN (SELECT GAINACID
+					   FROM PRO_BADGE
+		               WHERE PID = #{pid})
+	</select>
+	
+	<!-- 프로젝트에 등록된 기술 -->
+	<select id="skName" resultType="java.lang.String">
+		SELECT SKNAME
+		FROM SKILL
+		WHERE SKID IN (SELECT SKID
+				       FROM PRO_SKILL
+		               WHERE PID = #{pid})
+	</select>
+
+	<!-- 참여중인 현재인원 -->
+	<select id="currentCount" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM PRO_JOIN
+		WHERE PID= #{pid} 
+		  AND PJID NOT IN (SELECT PJID
+			     		   FROM PRO_EXIT)
+	</select>
+	
+	<!-- 프로젝트 제목 -->
+	<select id="sname" resultType="java.lang.String">
+		SELECT SNAME
+		FROM PRO_SUBJECT_INSERT
+		WHERE PID = (SELECT PID
+            	     FROM PRO_CREATE
+                     WHERE PID = #{pid})	     		   
+	</select>
+ 	
+	<!-- 회원의 성별과 레벨 -->
+    <select id="userJoin" resultType="com.team1.pro.main.ProjectMainDTO">
+		SELECT UNAME
+		     , DECODE(SUBSTR(SSDBACK,1,1), 1,'남자',2, '여자') AS UGSELECT
+		     , (SELECT MAX(LVID) AS ULEVEL
+		        FROM USLEVEL
+		        WHERE POINT &lt;= (SELECT NVL(SUM(EXP),0) AS ACCEXP
+		                        FROM USERINSERT U LEFT JOIN STACKEXP S
+		                        ON U.USID = S.USID
+		                        WHERE U.USID=#{usId})) AS ULEVEL
+		FROM USERINSERT
+		WHERE USID = #{usId}
+	</select>
+</mapper>

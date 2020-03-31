@@ -1,0 +1,1352 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ 
+<!-- 인터페이스 IProjectDAO 를 구체화시킬 마이바이트 xml -->
+<mapper namespace="com.team1.pro.ing.IProjectDAO">
+
+	<select id="projectNumber" resultType="java.lang.Integer">
+		SELECT NVL(COUNT(*), 0)
+		FROM PRO_CREATE
+	</select>
+	
+	<select id="getModeName" resultType="java.lang.String">
+		SELECT MODENAME
+		FROM STATUSMODE
+		WHERE MODEID = (SELECT MODEID
+		                FROM PRO_MODE_SELECT
+		                WHERE TFID = (SELECT TFID
+		                            FROM PRO_LEADER_RESULT
+		                            WHERE PROID = (SELECT PROID
+		                                            FROM PRO_LEADER_PROPOSE
+		                                            WHERE PID = #{pid})))
+	</select>
+
+	<update id="chapterUpdate">
+		UPDATE PRO_JOIN
+		SET CHAPTER = #{num}
+		WHERE PJID = #{pjId}
+	</update>
+	
+	<select id="getChapter" resultType="java.lang.Integer">
+		SELECT CHAPTER
+		FROM PRO_JOIN
+		WHERE PJID = #{pjId}
+	</select>
+
+	<select id="leaderVoteEnd" resultType="java.lang.String">
+		SELECT ADD_MONTHS((SELECT CREATEDATE
+                   FROM PRO_CREATE
+                   WHERE PID=#{pid})+2, 1) AS STARTVOTEEND
+		FROM DUAL
+	</select>
+	
+	<select id="voteCompleteMember" resultType="com.team1.pro.ing.ProjectDTO">
+		SELECT PROID, STADATE, VOTER, SELECTER
+		FROM PRO_LEADER_VOTE_START
+		WHERE PROID = (SELECT MAX(PROID)
+		               FROM PRO_LEADER_PROPOSE
+		               WHERE PID = #{pid})
+	</select>
+	
+	<select id="proUserInfo" resultType="com.team1.pro.ing.ProjectDTO">
+		SELECT J.PID AS PID, U.USID AS USID, U.NICKNAME AS NICKNAME, U.UNAME AS USNAME, U.USLV AS USLV, U.USPHOTO AS USPHOTO
+		FROM (SELECT USID, NICKNAME, UNAME, USPHOTO, (SELECT NVL(MAX(LVID), 0) AS USLV
+		                                     FROM USLEVEL
+		                                     WHERE POINT &lt;= (SELECT NVL(SUM(EXP), 0)
+		                                                     FROM STACKEXP
+		                                                     WHERE USID=#{usId})) AS USLV
+		                           FROM USERINSERT
+		                           WHERE USID = #{usId}) U RIGHT JOIN ( SELECT PJID, PJDATE, USID, PID
+		                                                         FROM PRO_JOIN
+		                                                         WHERE PJID NOT IN (SELECT PJID
+		                                                                            FROM PRO_EXIT)
+                                                                   AND PID = #{pid}
+                                                                   AND USID = #{usId}) J 
+		ON J.USID = U.USID
+	</select>
+	
+	<select id="progressInfo" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT C.PID AS PID, PR.PPNAME AS PPNAME, C.MINLEVEL AS MINLEVEL, C.MAXLEVEL AS MAXLEVEL
+		     , C.LINK AS LINK, C.PCONTENTS AS PCONTENTS, C.PADDRESS AS PADDRESS
+		     , (SELECT SNAME
+		        FROM PRO_SUBJECT_INSERT
+		        WHERE PID = #{pid}) AS SUBJECT
+		     , (SELECT ONRATE
+		        FROM ONLINERATE
+		        WHERE OID = (SELECT OID
+		                        FROM PRO_CREATE
+		                        WHERE PID = #{pid})) AS ONRATE
+		     , PR.PPDATE AS PPDATE, PR.PEDATE AS PEDATE
+		     , PE.PROPERIOD AS PROPERIOD
+		     , (SELECT COUNT(*)
+		        FROM PRO_JOIN
+		        WHERE PID = #{pid}
+		          AND PJID NOT IN (SELECT PJID
+		                            FROM PRO_EXIT)) AS PEONUM
+		     , P.PEOCOUNT AS PEOCOUNT
+		     , G.GSELECT AS GSELECT
+		FROM PRO_CREATE C LEFT JOIN PRO_PROGRESS PR
+		                  ON C.PID = PR.PID
+		                  LEFT JOIN GENDER G
+		                  ON C.GID = G.GID
+		                  LEFT JOIN PEOPLE P
+		                  ON C.PEOID = P.PEOID
+		                  LEFT JOIN PRO_PERIOD PE
+		                  ON C.PROID = PE.PROID
+		WHERE C.PID = #{pid}
+	</select>
+	
+	<select id="proSkillNames" resultType="java.lang.String">
+		SELECT skName
+		FROM SKILL
+		WHERE SKID IN (SELECT SKID
+		            FROM PRO_SKILL
+		            WHERE PID = #{pid})
+	</select>
+	
+	<insert id="proEvalEndInsert">
+		INSERT INTO PRO_EVAL_END(PEEID, PPID, PESUCCESS)
+		VALUES(SEQ141.NEXTVAL, #{ppId}, #{peSuccess})
+	</insert>
+	
+	<insert id="stackExpInsert">
+		INSERT INTO STACKEXP(EXPID, USID, EXP)
+		VALUES(SEQ135.NEXTVAL, #{usId}, #{exp})
+	</insert>
+	
+	<select id="peopleNumber" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM PRO_JOIN
+		WHERE PID = #{pid}
+		  AND PJID NOT IN (SELECT PJID
+		                   FROM PRO_EXIT)
+	</select>
+	
+	<select id="selecterNumber" resultType="com.team1.pro.ing.ProjectDTO">
+		SELECT J.USID AS SELECTER,  S.SELECTERCOUNT AS SELECTERCOUNT
+		FROM
+		(
+		    SELECT SELECTER, COUNT(SELECTER) AS SELECTERCOUNT
+		    FROM PRO_LEADER_VOTE_START
+		    WHERE PROID = (SELECT MAX(PROID)
+		                  FROM PRO_LEADER_PROPOSE
+		                  WHERE PID = #{pid})
+		    GROUP BY SELECTER
+		    ORDER BY SELECTERCOUNT DESC
+		) S LEFT JOIN PRO_JOIN J
+		ON S.SELECTER = J.PJID
+	</select>
+	
+	<select id="getProId" resultType="java.lang.Integer">
+		SELECT NVL(PROID, 0)
+		FROM PRO_LEADER_VOTE_START
+		WHERE VOTER = #{pjId}
+	</select>
+	
+	<select id="reSelecterNumber" resultType="com.team1.pro.ing.ProjectDTO">
+		SELECT J.USID AS SELECTER,  S.SELECTERCOUNT AS SELECTERCOUNT
+		FROM
+		(
+		    SELECT SELECTER, COUNT(SELECTER) AS SELECTERCOUNT
+		    FROM PRO_LEADER_VOTE_START
+		    WHERE PROID = (SELECT MAX(PROID)
+		                    FROM PRO_LEADER_PROPOSE
+		                    WHERE PROID &lt; (SELECT MAX(PROID)
+		                                    FROM PRO_LEADER_PROPOSE
+		                                    WHERE PID = #{pid}))
+		    GROUP BY SELECTER
+		    ORDER BY SELECTERCOUNT DESC
+		) S LEFT JOIN PRO_JOIN J
+		ON S.SELECTER = J.PJID
+	</select>
+	
+	<insert id="leaderPropose">
+		INSERT INTO PRO_LEADER_PROPOSE(PROID, PID) VALUES(SEQ119.NEXTVAL, #{pid})
+	</insert>
+	
+	<!-- 프로젝트번호로 팀원들 번호 얻어내기 -->
+	<select id="getMembersId" resultType="java.lang.Integer">
+		SELECT USID
+		FROM
+		(
+		    SELECT PJID, PJDATE, USID, PID
+		    FROM PRO_JOIN
+		    WHERE PJID NOT IN (SELECT PJID
+		                       FROM PRO_EXIT)
+		)
+		WHERE PID = #{pid}
+	</select>
+	
+	<!-- 투표를 완료한 멤버들 번호 출력 -->
+	<select id="completeVoteMembers" resultType="java.lang.Integer">
+		SELECT NVL(USID, 0)
+		FROM PRO_JOIN
+		WHERE PJID IN (SELECT VOTER
+		               FROM PRO_LEADER_VOTE_START
+		               WHERE PROID = (SELECT MAX(PROID)
+		                              FROM PRO_LEADER_PROPOSE
+		                              WHERE PID = #{pid}))
+	</select>
+	<!-- 투표를 완료하지않은 멤버들 번호 출력 -->
+	<select id="progressVoteMembers" resultType="java.lang.Integer">
+		SELECT NVL(V.USID, 0) AS USID
+		FROM
+		(
+		    SELECT USID
+		    FROM PRO_JOIN
+		    WHERE PID = #{pid}
+		) V
+		WHERE V.USID NOT IN (SELECT USID
+		                     FROM PRO_JOIN
+		                     WHERE PJID IN (SELECT VOTER
+		                                    FROM PRO_LEADER_VOTE_START
+		                                    WHERE PROID = (SELECT MAX(PROID)
+		                                                   FROM PRO_LEADER_PROPOSE
+		                                                   WHERE PID = #{pid})))
+	</select>
+	
+	<select id="usIdToPjId" resultType="java.lang.Integer">
+		SELECT PJID
+		FROM
+		(
+		    SELECT PJID, PJDATE, USID, PID
+		    FROM PRO_JOIN
+		    WHERE PJID NOT IN (SELECT PJID
+		                       FROM PRO_EXIT)
+		)
+		WHERE PID = #{pid}
+		  AND USID = #{usId}
+	</select>
+	
+	<select id="pjIdToUsId" resultType="java.lang.Integer">
+		SELECT USID
+		FROM PRO_JOIN
+		WHERE PJID = #{pjId}
+	</select>
+	
+	<select id="voterToProId" resultType="java.lang.Integer">
+		SELECT NVL(PROID, 0)
+		FROM PRO_LEADER_VOTE_START
+		WHERE VOTER = #{voter}
+	</select>
+	
+	<insert id="voteInsert">
+		INSERT INTO PRO_LEADER_VOTE_START(LEAID, PROID, VOTER, SELECTER)
+		VALUES(SEQ123.NEXTVAL, #{proId}, #{voter}, #{selecter})
+	</insert>
+	
+	
+	
+	
+	<insert id="leaderInsert" parameterType="com.team1.pro.ing.ProjectDTO">
+		INSERT INTO PRO_LEADER_RESULT(TFID, PROID, PJID)
+		VALUES(SEQ129.NEXTVAL, #{proId}, #{pjId})
+	</insert>
+	
+	<select id="leaderPresent" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM PRO_LEADER_RESULT
+		WHERE PROID = (SELECT MAX(PROID)
+		               FROM PRO_LEADER_PROPOSE
+		               WHERE PID = #{pid})
+	</select>
+	
+	<select id="getLeaderInfo" resultType="com.team1.pro.ing.ProjectDTO">
+		SELECT PJID, TFID
+		FROM PRO_LEADER_RESULT
+		WHERE PROID = (SELECT MAX(PROID)
+		               FROM PRO_LEADER_PROPOSE
+		               WHERE PID = #{pid})
+	</select>
+	
+	<insert id="modeInsert">
+		INSERT INTO PRO_MODE_SELECT(MSID, MODEID, TFID)
+		VALUES(SEQ120.NEXTVAL, #{modeId}, #{tfId})
+	</insert>
+	
+	<select id="reportFrequency" resultType="java.lang.Integer">
+		SELECT FRE
+		FROM REPORTFREQUENCY
+	</select>
+	
+	<select id="reportArray" resultType="java.lang.String">
+		SELECT SSNAME
+		FROM REPORT
+		WHERE SSID NOT IN (1,2)
+	</select>
+	
+	<select id="notOracleList" resultType="java.lang.String">
+		SELECT SSNAME
+		FROM REPORT
+		WHERE SSID NOT IN (1,2,5)
+	</select>
+	
+	<select id="dbSkill" resultType="java.lang.String">
+		SELECT SKNAME
+		FROM SKILL
+		WHERE SKID BETWEEN 9 AND 15
+	</select>
+	
+	<select id="proSkillList" resultType="java.lang.Integer">
+		SELECT NVL(SKID, 0)
+		FROM PRO_SKILL
+		WHERE PID = #{pid}
+	</select>
+	
+	<select id="timeLineList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT T.TID AS TID, I.USID AS USID, I.PID AS PID, I.NICKNAME AS NICKNAME, I.USLV AS USLV, T.PFILE AS PFILE, T.PDATE AS PDATE, T.CONTENT AS CONTENT, I.USPHOTO AS USPHOTO
+		FROM (SELECT TID, USID, PPID, CONTENT, PDATE, PFILE
+              FROM PRO_TIMELINE
+              WHERE PPID = (SELECT PPID
+                            FROM PRO_PROGRESS
+                            WHERE PID=#{pid})) T LEFT JOIN 
+		( 
+		    SELECT J.PID AS PID, J.PJID AS PJID, U.USID AS USID, U.NICKNAME AS NICKNAME, U.UNAME AS USNAME, U.USLV AS USLV, U.USPHOTO AS USPHOTO
+		    FROM (SELECT R.USID AS USID, R.NICKNAME AS NICKNAME, R.UNAME AS UNAME, R.USPHOTO AS USPHOTO, (SELECT NVL(MAX(LVID), 0)
+							                                                                             FROM USLEVEL
+							                                                                             WHERE POINT &lt;= (SELECT NVL(SUM(EXP), 0)
+							                                                                                             FROM STACKEXP
+							                                                                                             WHERE USID = R.USID)) AS USLV
+		          FROM USERINSERT R
+		          WHERE USID IN (SELECT USID
+		                         FROM 
+		                         (SELECT PJID, PJDATE, USID, PID
+		                          FROM PRO_JOIN
+		                          WHERE PJID NOT IN (SELECT PJID
+		                                             FROM PRO_EXIT))
+                                 WHERE PID = #{pid})) U LEFT JOIN (SELECT USID, PJID, PJDATE, PID
+                                                              FROM 
+                                                              (   
+                                                                  SELECT PJID, PJDATE, USID, PID
+                                                                  FROM PRO_JOIN
+                                                                  WHERE PJID NOT IN (SELECT PJID
+                                                                                     FROM PRO_EXIT)
+                                                              )
+                                                              WHERE PID = #{pid}) J 
+                                                    ON J.USID = U.USID
+		) I
+		ON T.USID = I.PJID
+		ORDER BY TID DESC
+	</select>
+	
+	<select id="timeLineSearchList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT T.TID AS TID, I.USID AS USID, I.PID AS PID, I.NICKNAME AS NICKNAME, I.USLV AS USLV, T.PFILE AS PFILE, T.PDATE AS PDATE, T.CONTENT AS CONTENT, I.USPHOTO AS USPHOTO
+		FROM (SELECT TID, USID, PPID, CONTENT, PDATE, PFILE
+              FROM PRO_TIMELINE
+              WHERE PPID = (SELECT PPID
+                            FROM PRO_PROGRESS
+                            WHERE PID=#{pid})
+                AND TID IN (SELECT TID
+                            FROM PRO_TIMELINE
+                            WHERE TID IN (SELECT TID
+                                          FROM PRO_HASHTAG
+                                          WHERE HASHNAME LIKE '%'||#{hashName}||'%'))) T LEFT JOIN 
+		( 
+		    SELECT J.PID AS PID, J.PJID AS PJID, U.USID AS USID, U.NICKNAME AS NICKNAME, U.UNAME AS USNAME, U.USLV AS USLV, U.USPHOTO AS USPHOTO
+		    FROM (SELECT R.USID AS USID, R.NICKNAME AS NICKNAME, R.UNAME AS UNAME, R.USPHOTO AS USPHOTO, (SELECT NVL(MAX(LVID), 0)
+                                                                                                         FROM USLEVEL
+                                                                                                         WHERE POINT &lt;= (SELECT NVL(SUM(EXP), 0)
+                                                                                                                         FROM STACKEXP
+                                                                                                                         WHERE USID = R.USID)) AS USLV
+		          FROM USERINSERT R
+		          WHERE USID IN (SELECT USID
+		                         FROM 
+		                         (SELECT PJID, PJDATE, USID, PID
+		                          FROM PRO_JOIN
+		                          WHERE PJID NOT IN (SELECT PJID
+		                                             FROM PRO_EXIT))
+                                 WHERE PID = #{pid})) U LEFT JOIN (SELECT USID, PJID, PJDATE, PID
+                                                              FROM 
+                                                              (   
+                                                                  SELECT PJID, PJDATE, USID, PID
+                                                                  FROM PRO_JOIN
+                                                                  WHERE PJID NOT IN (SELECT PJID
+                                                                                     FROM PRO_EXIT)
+                                                              )
+                                                              WHERE PID = #{pid}) J 
+                                                    ON J.USID = U.USID
+		) I
+		ON T.USID = I.PJID
+        ORDER BY TID DESC
+	</select>
+	
+	<insert id="timeLineLockInsert">
+		INSERT INTO PRO_TIMELINE_SETTING(HIDEID, PPID)
+		VALUES(SEQ35.NEXTVAL, #{ppId})
+	</insert>
+	
+	<delete id="timeLineLockDelete">
+		DELETE
+		FROM PRO_TIMELINE_SETTING
+		WHERE PPID = (SELECT PPID
+		              FROM PRO_PROGRESS
+		              WHERE PID = #{pid})
+	</delete>
+	
+	<select id="hasTimeLineLock" resultType="java.lang.Integer">
+		SELECT COUNT(PPID)
+		FROM PRO_TIMELINE_SETTING
+		WHERE PPID = (SELECT PPID
+		              FROM PRO_PROGRESS
+		              WHERE PID = #{pid})
+	</select>
+	
+	<select id="hashTagList" resultType="java.lang.String">
+		SELECT HASHNAME AS HASHTAG
+		FROM PRO_HASHTAG
+		WHERE TID = #{tid}
+		ORDER BY HID
+	</select>
+	
+	<select id="visitorList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT VID, PPID, NICKNAME, USLV, VSDATE, VSTEXT, USID, USPHOTO
+		FROM
+		(
+		    SELECT V.VID AS VID, V.PPID AS PPID, I.NICKNAME AS NICKNAME, I.USLV AS USLV, V.VSDATE AS VSDATE, V.VSTEXT AS VSTEXT, I.USID AS USID, I.USPHOTO AS USPHOTO
+		    FROM PRO_VISITOR V LEFT JOIN
+		    (
+		        SELECT USID, NICKNAME, UNAME, USLV, USPHOTO
+		        FROM (SELECT R.USID AS USID, R.NICKNAME AS NICKNAME, R.UNAME AS UNAME, R.USPHOTO AS USPHOTO, (SELECT NVL(MAX(LVID), 0)
+							                                                                                 FROM USLEVEL
+							                                                                                 WHERE POINT &lt;= (SELECT NVL(SUM(EXP), 0)
+							                                                                                                 FROM STACKEXP
+							                                                                                                 WHERE USID = R.USID)) AS USLV
+		              FROM USERINSERT R)
+		    ) I
+		    ON I.USID = V.USID                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+		)
+		WHERE PPID = (SELECT PPID
+		              FROM PRO_PROGRESS
+		              WHERE PID = #{pid})
+		              ORDER BY VID DESC
+	</select>
+	
+	<delete id="timeLineDelete">
+		DELETE
+		FROM PRO_TIMELINE
+		WHERE TID = #{tid}
+	</delete>
+	
+	<select id="pidToProId" resultType="java.lang.Integer">
+		SELECT MAX(PROID) AS PROID
+		FROM PRO_LEADER_PROPOSE
+		WHERE PID = #{pid}
+	</select>
+	
+	<select id="modeSelectEnd" resultType="java.lang.String">
+		SELECT PLDATE + 2 AS MODESELECTPERIOD
+		FROM PRO_LEADER_RESULT
+		WHERE PROID = (SELECT MAX(PROID)
+		               FROM PRO_LEADER_PROPOSE
+		               WHERE PID = #{pid})
+	</select>
+	
+	<insert id="timeLineInsert" statementType="CALLABLE" parameterType="com.team1.pro.ing.ProgressDTO" useGeneratedKeys="false">
+		{ CALL PROC_TIMELINE_INSERT(#{pjId, jdbcType=INTEGER, mode=IN}
+								  , #{pid, jdbcType=INTEGER, mode=IN}
+								  , #{content, jdbcType=VARCHAR, mode=IN}
+								  , #{pfile, jdbcType=VARCHAR, mode=IN}) }
+	</insert>
+	
+	<insert id="hashTagInsert">
+		INSERT INTO PRO_HASHTAG(HID, TID, HASHNAME)
+		VALUES(SEQ38.NEXTVAL, #{tid}, #{hashName})
+	</insert>
+	
+	<select id="recentTimeLine" resultType="java.lang.Integer">
+		SELECT MAX(TID) AS TID
+		FROM PRO_TIMELINE
+		WHERE USID = (SELECT PJID
+		              FROM
+		              (
+		                SELECT PJID, PJDATE, USID, PID
+		                FROM PRO_JOIN
+		                WHERE PJID NOT IN (SELECT PJID
+		                                   FROM PRO_EXIT)
+		              )
+		              WHERE PID = #{pid}
+		                AND USID = #{usId})
+	</select>
+	
+	<insert id="visitorInsert" statementType="CALLABLE" parameterType="com.team1.pro.ing.ProgressDTO" useGeneratedKeys="false">
+		{ CALL PROC_VISITOR_INSERT(#{usId, jdbcType=INTEGER, mode=IN}
+								 , #{pid, jdbcType=INTEGER, mode=IN}
+								 , #{vsText, jdbcType=VARCHAR, mode=IN} )
+	</insert>
+	
+	<delete id="visitorDelete">
+		DELETE
+		FROM PRO_VISITOR
+		WHERE VID = #{vid}
+	</delete>
+	
+	<insert id="reportSubmit">
+		INSERT INTO PRO_GUSIDE_REPORT_SUBMIT(FSID, PPID, GPID, USID, PFILE)
+		VALUES(SEQ8.NEXTVAL, #{ppId}, #{gpId}, #{pjId}, #{pfile})
+	</insert>
+	
+	<select id="reportList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT SSID, SSNAME, DOWNLINK
+		FROM REPORT
+	</select>
+	
+	<select id="getModeMsId" resultType="java.lang.Integer">
+		SELECT MSID
+		FROM PRO_MODE_SELECT
+		WHERE TFID = (SELECT TFID
+		              FROM PRO_LEADER_RESULT
+		              WHERE PROID = (SELECT MAX(PROID)
+		                             FROM PRO_LEADER_PROPOSE
+		                             WHERE PID = #{pid}))
+	</select>
+	
+	<select id="hasMode" resultType="java.lang.Integer">
+		SELECT COUNT(MSID)
+		FROM PRO_MODE_SELECT
+		WHERE TFID = (SELECT TFID
+		              FROM PRO_LEADER_RESULT
+		              WHERE PROID = (SELECT MAX(PROID)
+		                             FROM PRO_LEADER_PROPOSE
+		                             WHERE PID = #{pid}))
+	</select>
+	
+	<select id="getModeNum" resultType="java.lang.Integer">
+		SELECT MODEID
+		FROM PRO_MODE_SELECT
+		WHERE TFID = (SELECT TFID
+		                FROM PRO_LEADER_RESULT
+		                WHERE PROID = (SELECT MAX(PROID)
+		                               FROM PRO_LEADER_PROPOSE
+		                               WHERE PID = #{pid}))
+	</select>
+	
+	<select id="getPeriodNum" resultType="java.lang.Integer">
+		SELECT PROID
+		FROM PRO_CREATE
+		WHERE PID = #{pid}
+	</select>
+	
+	<select id="createToProgress" resultType="java.lang.Integer">
+		SELECT PPID
+		FROM PRO_PROGRESS
+		WHERE PID=#{pid}
+	</select>
+	
+	<insert id="progressInsert" statementType="CALLABLE" parameterType="com.team1.pro.ing.ProjectDTO">
+		{ CALL PROC_PRO_PROGRESS( #{pid}, #{msId} ) }
+	</insert>
+	
+	<select id="guideReportList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT P.GPID AS GPID, R.SSNAME AS SSNAME 
+		FROM              
+		(        
+		    SELECT GPID, SSID
+		    FROM PRO_GUSIDE_PLAYTERM
+		    WHERE MODEID = #{modeId}
+		      AND PROID = #{proId}
+		) P LEFT JOIN REPORT R
+		ON P.SSID = R.SSID
+	</select>
+	
+	<select id="getMinGpId" resultType="java.lang.Integer">
+		SELECT MIN(P.GPID) + 2 AS MINGPID
+		FROM              
+		(        
+		    SELECT GPID, SSID
+		    FROM PRO_GUSIDE_PLAYTERM
+		    WHERE MODEID = #{modeId}
+		      AND PROID = #{proId}
+		) P LEFT JOIN REPORT R
+		ON P.SSID = R.SSID
+	</select>
+	
+	<select id="getMaxGpId" resultType="java.lang.Integer">
+		SELECT NVL(MAX(GPID), 0) AS MAXGPID
+		FROM PRO_GUSIDE_REPORT_SUBMIT
+		WHERE PPID = (SELECT PPID
+		              FROM PRO_PROGRESS
+		              WHERE PID = #{pid})
+	</select>
+	
+	<select id="getLogReportId" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT GPID, SSNAME
+		FROM 
+		(
+		    SELECT P.GPID AS GPID, R.SSNAME AS SSNAME 
+		    FROM              
+		    (        
+		        SELECT GPID, SSID
+		        FROM PRO_GUSIDE_PLAYTERM
+		        WHERE MODEID = #{modeId}
+		          AND PROID = #{proId}
+		    ) P LEFT JOIN REPORT R
+		    ON P.SSID = R.SSID
+		)
+		WHERE SSNAME IN ('회의록', '업무일지')
+	</select>
+	
+	<select id="guideReportOne" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT GPID, SSNAME
+		FROM
+		(
+		    SELECT P.GPID AS GPID, R.SSNAME AS SSNAME 
+		    FROM              
+		    (        
+		        SELECT GPID, SSID
+		        FROM PRO_GUSIDE_PLAYTERM
+		        WHERE MODEID = #{modeId}
+		          AND PROID = #{proId}
+		    ) P LEFT JOIN REPORT R
+		    ON P.SSID = R.SSID
+		)
+		WHERE GPID = #{gpId}
+	</select>
+	
+	<select id="guideSubmitCount" resultType="java.lang.Double">
+		SELECT TRUNC((SELECT PPDATE
+		        FROM PRO_PROGRESS
+		        WHERE PID = #{pid})+M.GPERIOD*GPNUM - SYSDATE, 2) AS SUBMITCOUNT
+		FROM
+		(
+		    SELECT ROWNUM AS GPNUM, GPID, SSID, EXP, GPERIOD
+		    FROM PRO_GUSIDE_PLAYTERM
+		    WHERE PROID = (SELECT PROID
+		                    FROM PRO_CREATE
+		                    WHERE PID = #{pid})
+		      AND MODEID = (SELECT MODEID
+		                    FROM PRO_MODE_SELECT
+		                    WHERE MSID = (SELECT MSID
+		                                FROM PRO_PROGRESS
+		                                WHERE PID = #{pid}))
+		      AND SSID NOT IN (1,2)
+		) M LEFT JOIN REPORT R
+		ON M.SSID = R.SSID
+		WHERE GPID = #{gpId}
+	</select>
+	
+	<select id="guideMeetLogSubmitCount" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT SUBMITCOUNT, GPENDDATE
+		FROM 
+		(
+		    SELECT ROWNUM AS GPNUM, PG.FSID AS FSID 
+		            , TRUNC((SELECT PPDATE
+		                     FROM PRO_PROGRESS
+		                     WHERE PID = #{pid}) + PP.GPERIOD * ROWNUM - SYSDATE, 2) AS SUBMITCOUNT
+		            , PP.GPERIOD
+		            ,(SELECT PPDATE
+		              FROM PRO_PROGRESS
+		              WHERE PID = #{pid}) + PP.GPERIOD * ROWNUM AS GPENDDATE
+		    FROM (SELECT *
+					FROM PRO_GUSIDE_REPORT_SUBMIT
+					ORDER BY FSID) PG LEFT JOIN PRO_GUSIDE_PLAYTERM PP
+		      ON PG.GPID = PP.GPID
+		    WHERE PPID = (SELECT PPID
+		                    FROM PRO_PROGRESS
+		                    WHERE PID = #{pid})
+		      AND PP.SSID = #{ssId}
+		)
+		WHERE FSID = (SELECT MAX(FSID)
+		            FROM PRO_GUSIDE_REPORT_SUBMIT
+		            WHERE PPID = (SELECT PPID
+		                        FROM PRO_PROGRESS
+		                        WHERE PID = #{pid})
+		              AND GPID IN (SELECT GPID
+		                            FROM PRO_GUSIDE_PLAYTERM
+		                            WHERE SSID = #{ssId}))
+	</select>
+	
+	<select id="guideMeetLogSubmitList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT ROWNUM AS GPNUM, PG.FSID AS FSID 
+		        ,(SELECT PPDATE
+		          FROM PRO_PROGRESS
+		          WHERE PID = #{pid}) + PP.GPERIOD * ROWNUM - PP.GPERIOD AS GPSTARTDATE 
+		        ,(SELECT PPDATE
+		          FROM PRO_PROGRESS
+		          WHERE PID = #{pid}) + PP.GPERIOD * ROWNUM AS GPENDDATE
+		        , TRUNC((SELECT PPDATE
+		                 FROM PRO_PROGRESS
+		                 WHERE PID = #{pid}) + PP.GPERIOD * ROWNUM - SYSDATE, 2) AS SUBMITCOUNT
+		        , PP.GPERIOD
+		FROM (SELECT *
+			FROM PRO_GUSIDE_REPORT_SUBMIT
+			ORDER BY FSID) PG LEFT JOIN PRO_GUSIDE_PLAYTERM PP
+		  ON PG.GPID = PP.GPID
+		WHERE PPID = (SELECT PPID
+		                FROM PRO_PROGRESS
+		                WHERE PID = #{pid})
+		  AND PP.SSID = #{ssId}
+	</select>
+	
+	<select id="afterSubmitList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT GPNUM, GPID, SSNAME, FSID, PDATE, PGDATE, GUIDEADVICECOUNT, GUIDEAVGSCORE, GUIDECLICK
+FROM
+(
+    SELECT ROW_NUMBER() OVER(ORDER BY FSID) AS GPNUM, GPID, SSNAME, FSID, PDATE, PGDATE, GUIDEADVICECOUNT, GUIDEAVGSCORE, GUIDECLICK
+    FROM
+    (
+        SELECT S.GPID AS GPID, S.SSNAME AS SSNAME, S.FSID AS FSID, S.PDATE AS PDATE, S.PGDATE AS PGDATE
+                     , F.GUIDEADVICECOUNT AS GUIDEADVICECOUNT, F.GUIDEAVGSCORE AS GUIDEAVGSCORE, S.CLICK AS GUIDECLICK
+                FROM
+                (
+                    SELECT P.GPID AS GPID, R.SSNAME AS SSNAME, G.FSID AS FSID, G.PDATE AS PDATE, M.PGDATE AS PGDATE, G.CLICK AS CLICK
+                    FROM
+                    (
+                        SELECT FSID, PDATE, GPID, CLICK
+                        FROM PRO_GUSIDE_REPORT_SUBMIT
+                        WHERE PPID = (SELECT PPID
+                                      FROM PRO_PROGRESS
+                                      WHERE PID = #{pid})
+                        ORDER BY FSID
+                    ) G LEFT JOIN PRO_GUSIDE_PLAYTERM P
+                    ON G.GPID = P.GPID
+                    LEFT JOIN REPORT R
+                    ON R.SSID = P.SSID
+                    LEFT JOIN (SELECT FSID, MAX(PGDATE) AS PGDATE
+                                FROM PRO_GUSIDE_REPORT_MODIFY
+                                GROUP BY FSID) M
+                    ON G.FSID = M.FSID
+                ) S LEFT JOIN (SELECT FSID, COUNT(FSID) AS GUIDEADVICECOUNT, ROUND(AVG(SCORE)) AS GUIDEAVGSCORE
+                                FROM PRO_SUBMIT_ADVICE
+                                GROUP BY FSID) F
+                ON S.FSID = F.FSID
+                WHERE SSNAME NOT IN ('회의록', '업무일지')
+        UNION ALL
+        SELECT S.GPID AS GPID, S.SSNAME AS SSNAME, S.FSID AS FSID,(SELECT MAX(PDATE)
+                                                                    FROM PRO_GUSIDE_REPORT_SUBMIT
+                                                                    WHERE PPID = (SELECT PPID
+                                                                                FROM PRO_PROGRESS
+                                                                                WHERE PID = #{pid})
+                                                                      AND GPID IN (SELECT GPID
+                                                                                    FROM PRO_GUSIDE_PLAYTERM
+                                                                                    WHERE SSID = 2)) AS PDATE, S.PGDATE AS PGDATE
+                     , F.GUIDEADVICECOUNT AS GUIDEADVICECOUNT, F.GUIDEAVGSCORE AS GUIDEAVGSCORE, S.CLICK AS GUIDECLICK
+                FROM
+                (
+                    SELECT ROW_NUMBER() OVER (ORDER BY G.FSID) GPNUM, P.GPID AS GPID, R.SSNAME AS SSNAME, G.FSID AS FSID, G.PDATE AS PDATE, M.PGDATE AS PGDATE, G.CLICK AS CLICK
+                    FROM
+                    (
+                        SELECT FSID, PDATE, GPID, CLICK
+                        FROM PRO_GUSIDE_REPORT_SUBMIT
+                        WHERE PPID = (SELECT PPID
+                                      FROM PRO_PROGRESS
+                                      WHERE PID = #{pid})
+                        ORDER BY FSID
+                    ) G LEFT JOIN PRO_GUSIDE_PLAYTERM P
+                    ON G.GPID = P.GPID
+                    LEFT JOIN REPORT R
+                    ON R.SSID = P.SSID
+                    LEFT JOIN (SELECT FSID, MAX(PGDATE) AS PGDATE
+                                FROM PRO_GUSIDE_REPORT_MODIFY
+                                GROUP BY FSID) M
+                    ON G.FSID = M.FSID
+                ) S LEFT JOIN (SELECT FSID, COUNT(FSID) AS GUIDEADVICECOUNT, ROUND(AVG(SCORE)) AS GUIDEAVGSCORE
+                                FROM PRO_SUBMIT_ADVICE
+                                GROUP BY FSID) F
+                ON S.FSID = F.FSID
+                WHERE S.SSNAME IN ('회의록')
+                  AND S.FSID = (SELECT MIN(FSID)
+                                FROM PRO_GUSIDE_REPORT_SUBMIT
+                                WHERE PPID = (SELECT PPID
+                                            FROM PRO_PROGRESS
+                                            WHERE PID = #{pid})
+                                  AND GPID IN (SELECT GPID
+                                                FROM PRO_GUSIDE_PLAYTERM
+                                                WHERE SSID = 2))
+        UNION ALL
+        SELECT S.GPID AS GPID, S.SSNAME AS SSNAME, S.FSID AS FSID,(SELECT MAX(PDATE)
+                                                                    FROM PRO_GUSIDE_REPORT_SUBMIT
+                                                                    WHERE PPID = (SELECT PPID
+                                                                                FROM PRO_PROGRESS
+                                                                                WHERE PID =#{pid})
+                                                                      AND GPID IN (SELECT GPID
+                                                                                    FROM PRO_GUSIDE_PLAYTERM
+                                                                                    WHERE SSID = 1)) AS PDATE, S.PGDATE AS PGDATE
+                     , F.GUIDEADVICECOUNT AS GUIDEADVICECOUNT, F.GUIDEAVGSCORE AS GUIDEAVGSCORE, S.CLICK AS GUIDECLICK
+                FROM
+                (
+                    SELECT ROW_NUMBER() OVER (ORDER BY G.FSID) GPNUM, P.GPID AS GPID, R.SSNAME AS SSNAME, G.FSID AS FSID, G.PDATE AS PDATE, M.PGDATE AS PGDATE, G.CLICK AS CLICK
+                    FROM
+                    (
+                        SELECT FSID, PDATE, GPID, CLICK
+                        FROM PRO_GUSIDE_REPORT_SUBMIT
+                        WHERE PPID = (SELECT PPID
+                                      FROM PRO_PROGRESS
+                                      WHERE PID = #{pid})
+                        ORDER BY FSID
+                    ) G LEFT JOIN PRO_GUSIDE_PLAYTERM P
+                    ON G.GPID = P.GPID
+                    LEFT JOIN REPORT R
+                    ON R.SSID = P.SSID
+                    LEFT JOIN (SELECT FSID, MAX(PGDATE) AS PGDATE
+                                FROM PRO_GUSIDE_REPORT_MODIFY
+                                GROUP BY FSID) M
+                    ON G.FSID = M.FSID
+                ) S LEFT JOIN (SELECT FSID, COUNT(FSID) AS GUIDEADVICECOUNT, ROUND(AVG(SCORE)) AS GUIDEAVGSCORE
+                                FROM PRO_SUBMIT_ADVICE
+                                GROUP BY FSID) F
+                ON S.FSID = F.FSID
+                WHERE S.SSNAME IN ('업무일지')
+                  AND S.FSID = (SELECT MIN(FSID)
+                                FROM PRO_GUSIDE_REPORT_SUBMIT
+                                WHERE PPID = (SELECT PPID
+                                            FROM PRO_PROGRESS
+                                            WHERE PID = #{pid})
+                                  AND GPID IN (SELECT GPID
+                                                FROM PRO_GUSIDE_PLAYTERM
+                                                WHERE SSID = 1))
+    )
+)
+ORDER BY GPNUM DESC
+	</select>
+	
+	<select id="endProjectReportList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT ROWNUM AS GPNUM, PG.FSID AS FSID 
+		        ,(SELECT PPDATE
+		          FROM PRO_PROGRESS
+		          WHERE PID = #{pid}) + PP.GPERIOD * ROWNUM - PP.GPERIOD AS GPSTARTDATE 
+		        ,(SELECT PPDATE
+		          FROM PRO_PROGRESS
+		          WHERE PID = #{pid}) + PP.GPERIOD * ROWNUM AS GPENDDATE
+		        , TRUNC((SELECT PPDATE
+		                 FROM PRO_PROGRESS
+		                 WHERE PID = #{pid}) + PP.GPERIOD * ROWNUM - SYSDATE, 2) AS SUBMITCOUNT
+		        , PP.GPERIOD AS GPERIOD, PP.EXP AS EXP
+		        , FS.GUIDEAVGSCORE AS GUIDEAVGSCORE
+		FROM (SELECT *
+		        FROM PRO_GUSIDE_REPORT_SUBMIT
+		        ORDER BY FSID) PG LEFT JOIN PRO_GUSIDE_PLAYTERM PP
+		  ON PG.GPID = PP.GPID
+		  LEFT JOIN (SELECT FSID, TRUNC(AVG(SCORE), 2) AS GUIDEAVGSCORE
+		            FROM PRO_SUBMIT_ADVICE
+		            GROUP BY FSID) FS
+		            ON FS.FSID = PG.FSID
+		WHERE PPID = (SELECT PPID
+		                FROM PRO_PROGRESS
+		                WHERE PID = #{pid})
+	</select>
+	
+	<select id="getModeExp" resultType="java.lang.Integer">
+		SELECT MODEPOINT AS EXP
+		FROM STATUSMODE
+		WHERE MODEID = (SELECT MODEID
+		                FROM PRO_MODE_SELECT
+		                WHERE MSID = (SELECT MSID
+		                            FROM PRO_PROGRESS
+		                            WHERE PID = #{pid}))
+	</select>
+	
+	<select id="projectEvalCount" resultType="java.lang.Double">
+		SELECT TRUNC(TO_DATE(PEDATE, 'YYYY-MM-DD') - TO_DATE(SYSDATE, 'YYYY-MM-DD'), 2)
+		FROM PRO_PROGRESS
+		WHERE PID = #{pid}
+	</select>
+	
+	<select id="fsIdToArray" resultType="java.lang.Integer">
+		SELECT FSID
+		FROM PRO_GUSIDE_REPORT_SUBMIT
+		WHERE GPID = (SELECT GPID
+		                FROM PRO_GUSIDE_REPORT_SUBMIT
+		                WHERE FSID = #{fsId})
+		ORDER BY FSID DESC
+	</select>
+	
+	<select id="fsIdToSsId" resultType="java.lang.Integer">
+		SELECT SSID
+		FROM PRO_GUSIDE_PLAYTERM
+		WHERE GPID = (SELECT GPID
+		            FROM PRO_GUSIDE_REPORT_SUBMIT
+		            WHERE FSID = #{fsId})
+	</select>
+	
+	<select id="getAdviceList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT O.ADVICENUM AS ADVICENUM, O.SAID AS SAID, O.SCORE AS SCORE, O.SATEXT AS SATEXT, O.SADATE AS SADATE, O.USID AS USID, O.NICKNAME AS NICKNAME, O.USLV AS USLV
+		     , O.FSID AS FSID, NVL(L.GUIDELIKECOUNT, 0) AS GUIDELIKECOUNT, O.USPHOTO AS USPHOTO
+		FROM
+		(
+		    SELECT A. ADVICENUM AS ADVICENUM, A.SAID AS SAID, A.SCORE AS SCORE, A.SATEXT AS SATEXT, A.SADATE AS SADATE, I.USID AS USID, I.NICKNAME AS NICKNAME, I.USLV AS USLV, A.FSID AS FSID, I.USPHOTO AS USPHOTO
+		    FROM
+		    (
+		        SELECT ADVICENUM, SAID, SCORE, SATEXT, SADATE, USID, FSID
+		        FROM 
+		        (
+		            SELECT ROWNUM AS ADVICENUM, SAID, SCORE, SATEXT, SADATE, USID, FSID
+		            FROM PRO_SUBMIT_ADVICE
+		            WHERE FSID = #{fsId}
+		        )
+		        ORDER BY ADVICENUM DESC
+		    ) A LEFT JOIN
+		        (
+		            SELECT USID, NICKNAME, UNAME, USLV, USPHOTO
+		            FROM (SELECT R.USID AS USID, R.NICKNAME AS NICKNAME, R.UNAME AS UNAME, R.USPHOTO AS USPHOTO, (SELECT NVL(MAX(LVID), 0)
+		                                                                                                         FROM USLEVEL
+		                                                                                                         WHERE POINT &lt;= (SELECT NVL(SUM(EXP), 0)
+		                                                                                                                         FROM STACKEXP
+		                                                                                                                         WHERE USID = R.USID)) AS USLV
+		                  FROM USERINSERT R)
+		        ) I
+		        ON I.USID = A.USID
+		) O LEFT JOIN (SELECT SAID, COUNT(SAID) AS GUIDELIKECOUNT
+		               FROM PRO_GUSIDE_EVALUATION_LIKE
+		               GROUP BY SAID) L
+		ON O.SAID = L.SAID
+		ORDER BY ADVICENUM DESC
+	</select>
+	
+	<select id="allAdviceList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT A. ADVICENUM AS ADVICENUM, A.SAID AS SAID, A.SCORE AS SCORE, A.SATEXT AS SATEXT, A.SADATE AS SADATE, I.USID AS USID, I.NICKNAME AS NICKNAME, I.USLV AS USLV, A.FSID AS FSID
+		FROM
+		(
+		    SELECT ADVICENUM, SAID, SCORE, SATEXT, SADATE, USID, FSID
+		    FROM 
+		    (
+		        SELECT ROWNUM AS ADVICENUM, SAID, SCORE, SATEXT, SADATE, USID, FSID
+		        FROM PRO_SUBMIT_ADVICE
+		    )
+		    ORDER BY ADVICENUM DESC
+		) A LEFT JOIN
+		    (
+		        SELECT USID, NICKNAME, UNAME, USLV
+		        FROM (SELECT R.USID AS USID, R.NICKNAME AS NICKNAME, R.UNAME AS UNAME, (SELECT NVL(MAX(LVID), 0)
+		                                                                                 FROM USLEVEL
+		                                                                                 WHERE POINT &lt;= (SELECT NVL(SUM(EXP), 0)
+		                                                                                                 FROM STACKEXP
+		                                                                                                 WHERE USID = R.USID)) AS USLV
+		              FROM USERINSERT R)
+		    ) I
+		    ON I.USID = A.USID
+	</select>
+	
+	<select id="getReportNFile" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT R.SSNAME AS SSNAME, S.PFILE AS PFILE
+		FROM 
+		(
+		    SELECT G.SSID AS SSID ,P.PFILE AS PFILE
+		    FROM
+		    (
+		        SELECT GPID, PFILE
+		        FROM PRO_GUSIDE_REPORT_SUBMIT
+		        WHERE FSID = #{fsId}
+		    ) P LEFT JOIN PRO_GUSIDE_PLAYTERM G
+		    ON P.GPID = G.GPID
+		) S LEFT JOIN REPORT R
+		ON S.SSID = R.SSID
+	</select>
+	
+	<insert id="guideAdviceInsert" parameterType="com.team1.pro.ing.ProgressDTO">
+		INSERT INTO PRO_SUBMIT_ADVICE(SAID, FSID, SCORE, SATEXT, USID)
+		VALUES(SEQ28.NEXTVAL, #{fsId}, #{score}, #{saText}, #{usId})
+	</insert>
+	
+	<delete id="guideAdviceDelete" parameterType="java.lang.Integer">
+		DELETE
+		FROM PRO_SUBMIT_ADVICE
+		WHERE SAID = #{saId}
+	</delete>
+	
+	<update id="guideSubmitClick" parameterType="java.lang.Integer">
+		UPDATE PRO_GUSIDE_REPORT_SUBMIT
+		SET CLICK=(SELECT CLICK + 1
+		            FROM PRO_GUSIDE_REPORT_SUBMIT
+		            WHERE FSID=#{fsId})
+		WHERE FSID=#{fsId}
+	</update>
+	
+	<insert id="guideLikeInsert">
+		INSERT INTO PRO_GUSIDE_EVALUATION_LIKE(ADLID, SAID, USID)
+		VALUES(SEQ117.NEXTVAL, #{saId}, #{usId})
+	</insert>
+	
+	<delete id="guideLikeDelete">
+		DELETE
+		FROM PRO_GUSIDE_EVALUATION_LIKE
+		WHERE SAID = #{saId}
+		  AND USID = #{usId}
+	</delete>
+	
+	<!-- 본인이 공감을 했는지 안했는지 가려내는 메소드 -->
+	<select id="guideLikeOk" resultType="java.lang.Integer">
+		SELECT COUNT(*) 
+		FROM PRO_GUSIDE_EVALUATION_LIKE
+		WHERE USID = #{usId}
+		  AND SAID = #{saId}
+	</select>
+	
+	<select id="guideLikeCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) 
+		FROM PRO_GUSIDE_EVALUATION_LIKE
+		WHERE SAID = #{saId}
+	</select>
+	
+	<select id="memberOutVoteEnd" resultType="java.lang.String">
+		SELECT TO_CHAR(SYSDATE + 1, 'YYYY-MM-DD HH24:MI:SS') AS MEMBEROUTVOTEEND
+		FROM DUAL
+	</select>
+	
+	<update id="endCheckUpdate">
+		UPDATE PRO_JOIN
+		SET ENDCHECK = 1
+		WHERE PJID = (SELECT PJID
+		            FROM PRO_JOIN
+		            WHERE PID = #{pid}
+		              AND USID = #{usId}
+		              AND PJID NOT IN (SELECT PJID
+		                                FROM PRO_EXIT))
+	</update>
+	
+	<insert id="memberOutVoteInsert">
+		INSERT INTO PRO_KICK_VOTE_PROPOSE(PKPID, PID, PREASON, USID)
+		VALUES(SEQ26.NEXTVAL, #{pid}, #{preason}, #{pjId})
+	</insert>
+	
+	<select id="memberOutVoteIng" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM PRO_KICK_VOTE_PROPOSE
+		WHERE PID = #{pid}
+		  AND PDATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                FROM DUAL)
+	</select>
+	
+	<select id="teamRemoveVoteIng" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM PRO_DESTROY_VOTE_STRAT
+		WHERE PPID = (SELECT PPID
+                        FROM PRO_PROGRESS
+                        WHERE PID = #{pid})
+		  AND STADATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')  
+                        FROM DUAL)
+	</select>
+	
+	<select id="outVoteRemainTime" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT  TRUNC(TRUNC(TRUNC(((PDATE + 1 - SYSDATE) * (24*60*60))/60)/60)/24) AS OUTDAYS
+		     , MOD(TRUNC(TRUNC(((PDATE + 1 - SYSDATE) * (24*60*60))/60)/60),24) AS OUTHOURS
+		     , MOD(TRUNC(((PDATE + 1 - SYSDATE) * (24*60*60))/60),60) AS OUTMINUTES
+		     , TRUNC(MOD(((PDATE + 1 - SYSDATE) * (24*60*60)),60)) AS OUTSECONDS
+		FROM PRO_KICK_VOTE_PROPOSE
+		WHERE PID = #{pid}
+		  AND PDATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                FROM DUAL)
+	</select>
+	
+	<insert id="memberOutVoteSubmit">
+		INSERT INTO PRO_KICK_VOTE_START(PKID, PKPID, SLID, USID)
+		VALUES(SEQ40.NEXTVAL, #{pkpId}, #{slId}, #{pjId})
+	</insert>
+	
+	<select id="memberOutVoteInfo" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT PKPID, PJID, PREASON
+		FROM PRO_KICK_VOTE_PROPOSE
+		WHERE PID = #{pid}
+		  AND PDATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                FROM DUAL)
+	</select>
+	
+	<select id="outVoteEndMember" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM
+		(
+		    SELECT USID
+		    FROM PRO_JOIN
+		    WHERE PJID IN (SELECT USID AS PJID
+		                    FROM PRO_KICK_VOTE_START
+		                    WHERE PKPID = (SELECT PKPID
+		                                    FROM PRO_KICK_VOTE_PROPOSE
+		                                    WHERE PID = #{pid}
+		                                      AND PDATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                                                    FROM DUAL)))
+		)               
+		WHERE USID = #{usId}
+	</select>
+	
+	<select id="outVoteEndList" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT PKID, PKPID, SLID, PKDATE, USID AS PJID
+		FROM PRO_KICK_VOTE_START
+		WHERE PKPID = (SELECT PKPID
+		                FROM PRO_KICK_VOTE_PROPOSE
+		                WHERE PID = #{pid}
+		                  AND PDATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                                FROM DUAL))
+	</select>
+	
+	<select id="hasOutVoteResult" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM PRO_KICK_VOTE_RESULT
+		WHERE PKPID = (SELECT PKPID
+		                FROM PRO_KICK_VOTE_PROPOSE
+		                WHERE PID = #{pid}
+		                  AND PDATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                                FROM DUAL))
+	</select>
+	
+	<select id="outVoteResultCount" resultType="java.lang.Integer">
+		SELECT NVL(SL.SLIDCOUNT, 0) AS SLIDCOUNT
+		FROM
+		(
+		        SELECT SLID, COUNT(*) AS SLIDCOUNT
+				FROM PRO_KICK_VOTE_START
+				WHERE PKPID = (SELECT PKPID
+				                FROM PRO_KICK_VOTE_PROPOSE
+				                WHERE PID = #{pid}
+				                  AND PDATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+				                                FROM DUAL))
+		        GROUP BY SLID
+		) SL RIGHT JOIN PRO_SELECT PS
+		           ON SL.SLID = PS.SELID
+		WHERE PS.SELID = #{slId}
+	</select>
+	
+	<insert id="proExitInsert">
+		INSERT INTO PRO_EXIT(PEID, PJID)
+		VALUES(SEQ66.NEXTVAL, #{pjId})
+	</insert>
+	
+	<insert id="outVoteResultInsert">
+		INSERT INTO PRO_KICK_VOTE_RESULT(PRID, PKPID)
+		VALUES(SEQ138.NEXTVAL, #{pkpId})
+	</insert>
+	
+	<select id="getUserNickName" resultType="java.lang.String">
+		SELECT NICKNAME
+		FROM USERINSERT
+		WHERE USID = #{usId}
+	</select>
+	
+	<select id="outVoteResultInfo" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT PRID, PKPID, PKDATE
+		FROM PRO_KICK_VOTE_RESULT
+		WHERE PKPID = (SELECT PKPID
+		              FROM PRO_KICK_VOTE_PROPOSE
+		              WHERE PID = #{pid}
+		              AND PDATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                              FROM DUAL))
+	</select>
+	
+	<insert id="teamRemoveVotePropose">
+		INSERT INTO PRO_DESTROY_VOTE_STRAT(DEID, PPID)
+		VALUES(SEQ42.NEXTVAL, #{ppId})
+	</insert>
+	
+	<select id="removeVoteRemainTime" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT  TRUNC(TRUNC(TRUNC(((STADATE +1 - SYSDATE) * (24*60*60))/60)/60)/24) AS OUTDAYS
+		     , MOD(TRUNC(TRUNC(((STADATE +1 - SYSDATE) * (24*60*60))/60)/60),24) AS OUTHOURS
+		     , MOD(TRUNC(((STADATE +1 - SYSDATE) * (24*60*60))/60),60) AS OUTMINUTES
+		     , TRUNC(MOD(((STADATE +1 - SYSDATE) * (24*60*60)),60)) AS OUTSECONDS
+		FROM PRO_DESTROY_VOTE_STRAT
+		WHERE STADATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                  FROM DUAL) 
+		  AND PPID = (SELECT PPID
+		              FROM PRO_PROGRESS
+		              WHERE PID = #{pid})
+	</select>
+	
+	<insert id="teamRemoveVoteSubmit">
+		INSERT INTO PRO_DESTROY_VOTE_PROGRESS(PID, PSID, AID, USID)
+		VALUES(SEQ43.NEXTVAL, #{deId}, #{slId}, #{pjId})
+	</insert>
+	
+	<select id="getTeamRemoveNum" resultType="java.lang.Integer">
+		SELECT DEID
+		FROM PRO_DESTROY_VOTE_STRAT
+		WHERE STADATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                  FROM DUAL) 
+		  AND PPID = (SELECT PPID
+		              FROM PRO_PROGRESS
+		              WHERE PID = #{pid})
+	</select>
+	
+	<select id="removeVoteEndMember" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM
+		(
+		    SELECT USID
+		    FROM PRO_JOIN
+		    WHERE PJID IN (SELECT USID AS PJID
+		                    FROM PRO_DESTROY_VOTE_PROGRESS
+		                    WHERE PSID = (SELECT DEID
+		                                  FROM PRO_DESTROY_VOTE_STRAT
+		                                  WHERE STADATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                                                    FROM DUAL) 
+		                                    AND PPID = (SELECT PPID
+		                                                FROM PRO_PROGRESS
+		                                                WHERE PID = #{pid})))
+		)
+		WHERE USID = #{usId}
+	</select>
+	
+	<select id="removeVoteEndCount" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM
+		(
+		    SELECT USID
+		    FROM PRO_JOIN
+		    WHERE PJID IN (SELECT USID AS PJID
+		                    FROM PRO_DESTROY_VOTE_PROGRESS
+		                    WHERE PSID = (SELECT DEID
+		                                  FROM PRO_DESTROY_VOTE_STRAT
+		                                  WHERE STADATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                                                    FROM DUAL) 
+		                                    AND PPID = (SELECT PPID
+		                                                FROM PRO_PROGRESS
+		                                                WHERE PID = #{pid})))
+		)
+	</select>
+	
+	<select id="hasEndCheck" resultType="java.lang.Integer">
+		SELECT ENDCHECK
+		FROM PRO_JOIN
+		WHERE PID = #{pid}
+		  AND USID = #{usId}
+		  AND PJID NOT IN (SELECT PJID
+		                    FROM PRO_EXIT)
+	</select>
+	
+	<select id="hasEvalEnd" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM PRO_EVAL_END
+		WHERE PPID = (SELECT PPID
+		                FROM PRO_PROGRESS
+		                WHERE PID = #{pid})
+	</select>
+	
+	<select id="hasRemoveVoteResult" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+		FROM PRO_DESTROY_VOTE_RESULT
+		WHERE DEID = (SELECT DEID
+		               FROM PRO_DESTROY_VOTE_STRAT
+		               WHERE STADATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                                 FROM DUAL) 
+		                 AND PPID = (SELECT PPID
+		                             FROM PRO_PROGRESS
+		                             WHERE PID = #{pid}))
+	</select>
+	
+	<select id="isKickVoteCheck" resultType="java.lang.Integer">
+		SELECT COUNT(*)
+	    FROM
+	    (                   
+	        SELECT PKCHECK
+			FROM PRO_KICK_VOTE_START
+			WHERE USID = #{pjId}
+			  AND PKID = (SELECT MAX(PKID)
+			                FROM PRO_KICK_VOTE_START
+			                WHERE USID = #{pjId})
+	    )
+	</select>
+	
+	<update id="kickVoteCheckUpdate">
+		UPDATE PRO_KICK_VOTE_START
+		SET PKCHECK = 1
+		WHERE USID = #{pjId}
+		  AND PKID = (SELECT MAX(PKID)
+		                FROM PRO_KICK_VOTE_START
+		                WHERE USID = #{pjId})
+	</update>
+	
+	<select id="isDestroyVoteCheck" resultType="java.lang.Integer">
+		SELECT PDCHECK
+		FROM PRO_DESTROY_VOTE_PROGRESS
+		WHERE USID = #{pjId}
+		  AND PID = (SELECT MAX(PID)
+		            FROM PRO_DESTROY_VOTE_PROGRESS
+		            WHERE USID = #{pjId});
+	</select>
+	
+	<update id="destroyVoteCheckUpdate">
+		UPDATE PRO_DESTROY_VOTE_PROGRESS
+		SET PDCHECK = 1
+		WHERE USID = #{pjId}
+		  AND PID = (SELECT MAX(PID)
+		            FROM PRO_DESTROY_VOTE_PROGRESS
+		            WHERE USID = #{pjId})
+	</update>
+	
+	<insert id="removeVoteResultInsert">
+		INSERT INTO PRO_DESTROY_RESULT(PDVID, DEID)
+		VALUES(SEQ139.NEXTVAL, #{deId})
+	</insert>
+	
+	<select id="removeVoteResultCount" resultType="java.lang.Integer">
+		SELECT COUNT(AID) AS SLIDCOUNT
+		FROM PRO_DESTROY_VOTE_PROGRESS
+		WHERE PSID = (SELECT DEID
+		               FROM PRO_DESTROY_VOTE_STRAT
+		               WHERE STADATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                                 FROM DUAL) 
+		                 AND PPID = (SELECT PPID
+		                             FROM PRO_PROGRESS
+		                             WHERE PID = #{pid}))
+		  AND AID = #{slId}
+		GROUP BY AID
+	</select>
+	
+	<delete id="removeProject">
+		DELETE
+		FROM PRO_CREATE
+		WHERE PID=#{pid}
+	</delete>
+	
+	<select id="removeVoteResultInfo" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT PDVID, DEID, PDVDATE
+		FROM PRO_DESTROY_VOTE_RESULT
+		WHERE DEID = (SELECT DEID
+		               FROM PRO_DESTROY_VOTE_STRAT
+		               WHERE STADATE >= (SELECT TO_DATE(SYSDATE - 1, 'YYYY-MM-DD HH24:MI:SS')
+		                                 FROM DUAL) 
+		                 AND PPID = (SELECT PPID
+		                             FROM PRO_PROGRESS
+		                             WHERE PID = #{pid}))
+	</select>
+	
+	<select id="projectEndInfo" resultType="com.team1.pro.ing.ProgressDTO">
+		SELECT PEEID, PPID, PEEDATE, PESUCCESS
+		FROM PRO_EVAL_END
+		WHERE PPID = (SELECT PPID
+		            FROM PRO_PROGRESS
+		            WHERE PID = #{pid})
+	</select>
+	
+	
+	<!-- 경험치 바 표현하기 -->
+	<select id="whatIsNowPoint" resultType="java.lang.Integer">
+		SELECT NVL(SUM(EXP),0)"NOWPOINT"
+		FROM USERINSERT U join STACKEXP SE
+		ON U.USID = SE.USID
+		WHERE U.USID=#{usId}
+	</select>
+	
+	<select id="whatIsPrePoint" resultType="java.lang.Integer">
+		SELECT NVL(MAX(POINT),0)"PREPOINT"
+		FROM USLEVEL
+		WHERE POINT &lt;= ( SELECT SUM(EXP) AS ACCEXP
+		                FROM USERINSERT U join STACKEXP SE
+		                ON U.USID = SE.USID
+		                WHERE U.USID=#{usId})
+	</select>
+	
+	<select id="whatIsNextPoint" resultType="java.lang.Integer">
+		SELECT MIN(POINT)"NEXTPOINT"
+		FROM USLEVEL
+		WHERE POINT &gt; ( SELECT NVL(SUM(EXP),0) AS ACCEXP
+		                FROM USERINSERT U join STACKEXP SE
+		                ON U.USID = SE.USID
+		                WHERE U.USID=#{usId})
+	</select>
+<!--	
+	
+	
+	
+	
+	<delete id="remove">
+		DELETE
+		FROM TBL_MEMBERLIST
+		WHERE MID = #{mid}
+	</delete>
+	
+	<update id="modify">
+		UPDATE TBL_MEMBERLIST
+		SET NAME = #{name}, TELEPHONE = #{telephone}
+		WHERE MID = #{mid}
+	</update>
+ -->	
+</mapper>

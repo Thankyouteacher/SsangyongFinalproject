@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- SQL 구문 쓰기 위해 쓰는 구문임 -->
+<mapper namespace="com.team1.user.IUserDAO">
+	<select id="count" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT FROM USERINSERT
+	</select>
+	
+	<select id="allUserInfo" resultType="com.team1.user.UserDTO">
+		SELECT USID, UNAME, USERID, PASSWORD, NICKNAME, SSDFRONT, SSDBACK, TELEPHONE, UADDRESS, USPHOTO
+		FROM USERINSERT
+		WHERE USID = #{usId}
+	</select>
+	
+	
+	<select id="dupliId" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM USERINSERT
+		WHERE USERID = #{userId}
+	</select>
+	
+	<select id="dupliNick" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM USERINSERT
+		WHERE NICKNAME = #{nickName}
+	</select>
+	
+	<select id="isLoginOk" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM
+		(
+			SELECT USERID, CRYPTPACK.DECRYPT(PASSWORD, #{password}) AS PASSWORD
+			FROM USERINSERT
+		)
+		WHERE USERID= #{userId} AND PASSWORD= #{password}
+	</select>
+	
+	<select id="isAdmin" resultType="java.lang.String">
+		SELECT ADMINID
+		FROM ADMIN
+		WHERE USID = (	SELECT USID
+						FROM USERINSERT
+						WHERE USERID= #{userId})
+	</select>
+	
+	<select id="whatNickName" resultType="java.lang.String">
+		SELECT NICKNAME
+		FROM USERINSERT
+		WHERE USERID= #{userId}
+	</select>
+	
+	<select id="whatNickName_" resultType="java.lang.String">
+		SELECT NICKNAME
+		FROM USERINSERT
+		WHERE usId = #{usId}
+	</select>
+	<!-- 
+	> - &gt;
+	< - &lt;
+	>= - &gt;=
+	<= - &lt;=	 
+	-->
+	<select id="whatIsLevel" resultType="java.lang.Integer">
+		SELECT NVL(MAX(LVID),1)"LEVEL"
+		FROM USLEVEL
+		WHERE POINT &lt;= ( SELECT NVL(SUM(EXP),0) AS ACCEXP
+		                FROM USERINSERT U join STACKEXP SE
+		                ON U.USID = SE.USID
+		                WHERE U.USID=#{usId})
+	</select>
+	  
+	<select id="whatIsNowPoint" resultType="java.lang.Integer">
+		SELECT NVL(SUM(EXP),0)"NOWPOINT"
+		FROM USERINSERT U join STACKEXP SE
+		ON U.USID = SE.USID
+		WHERE U.USID=#{usId}
+	</select>
+	
+	<select id="whatIsPrePoint" resultType="java.lang.Integer">
+		SELECT NVL(MAX(POINT),0)"PREPOINT"
+		FROM USLEVEL
+		WHERE POINT &lt;= ( SELECT SUM(EXP) AS ACCEXP
+		                FROM USERINSERT U join STACKEXP SE
+		                ON U.USID = SE.USID
+		                WHERE U.USID=#{usId})
+	</select>
+	
+	<select id="whatIsNextPoint" resultType="java.lang.Integer">
+		SELECT NVL(MIN(POINT),11500)"NEXTPOINT"
+		FROM USLEVEL
+		WHERE POINT &gt; ( SELECT NVL(SUM(EXP),0) AS ACCEXP
+		                FROM USERINSERT U join STACKEXP SE
+		                ON U.USID = SE.USID
+		                WHERE U.USID=#{usId})
+	</select>
+	
+<!-- 유저가 참여 중인, 진행 중인 프로젝트 -->
+   <select id="whatIsProjectIng" resultType="com.team1.project.UserProjectDTO" >
+		SELECT PG.PID, PP.PEOCOUNT, PC.RNAME, PC.PCONTENTS, PG.PPDATE, PG.PEDATE
+		FROM PRO_PROGRESS PG LEFT JOIN PRO_CREATE PC
+		ON PG.PID = PC.PID
+		LEFT JOIN PEOPLE PP
+		ON PC.PEOID = PP.PEOID
+		left join pro_join pj
+		on pg.pid = pj.pid
+		WHERE pj.usid = #{usId}
+		AND PG.PPID NOT IN ( SELECT PPID
+		                FROM PRO_EVAL_END)
+   </select>
+	
+   <select id="whatIsProjectWait" resultType="com.team1.project.UserProjectDTO">
+      SELECT PC.PID, PC.RNAME, PC.PCONTENTS, PP.PEOCOUNT, PC.CREATEDATE+30 AS PPDATE
+      FROM PRO_JOIN PJ  JOIN PRO_CREATE PC
+      ON PJ.PID = PC.PID
+      LEFT JOIN PEOPLE PP
+      ON PC.PEOID = PP.PEOID
+      WHERE PJ.PID NOT IN (   SELECT PJ.PID
+                              FROM PRO_EXIT PE LEFT JOIN PRO_JOIN PJ
+                              ON PE.PJID = PJ.PJID)
+         AND PC.PID NOT IN (  SELECT PID
+                              FROM PRO_PROGRESS)
+      AND PJ.USID = #{usId}
+   </select>
+	
+	<select id="whatIsProjectSkill" resultType="java.lang.String">
+		SELECT SKNAME
+		FROM SKILL
+		WHERE SKID IN ( SELECT SKID
+		           FROM PRO_SKILL
+		             WHERE PID = #{pid} )
+	</select>
+	
+	<select id="whatIsProjectEnd" resultType="com.team1.project.UserProjectDTO">
+		SELECT PG.PID, PP.PEOCOUNT, PC.RNAME, PC.PCONTENTS, PG.PPDATE, PG.PEDATE, pj.usid
+		FROM PRO_PROGRESS PG LEFT JOIN PRO_CREATE PC
+		ON PG.PID = PC.PID
+		LEFT JOIN PEOPLE PP
+		ON PC.PEOID = PP.PEOID
+		left join pro_join pj
+		on pg.pid = pj.pid
+		WHERE pj.usid = #{usId}
+		AND PG.PPID IN ( SELECT PPID
+		                FROM PRO_EVAL_END)
+   </select>
+	
+	<select id="whatIsBoardWrite" resultType="com.team1.userboard.UserBoardDTO">
+		SELECT E.BOARDNAME AS BOARDNAME, E.BID AS BID, E.BPID AS BPID, E.POSTTITLE AS POSTTITLE, E.CONTENT AS CONTENT
+		     , E.CREATEDATE AS CREATEDATE, E.NICKNAME AS NICKNAME
+		FROM
+		(
+		    SELECT A.BOARDNAME AS BOARDNAME, A.BID AS BID, A.BPID AS BPID, A.POSTTITLE AS POSTTITLE, A.CONTENT AS CONTENT
+		         , A.CREATEDATE AS CREATEDATE, A.CLICK AS CLICK, U.NICKNAME AS NICKNAME
+		    FROM
+		    (
+		        SELECT B.BID AS BID, B.BNAME AS BOARDNAME, W.BPID AS BPID, W.POSTTITLE AS POSTTITLE, W.CONTENT AS CONTENT
+		             , W.CREATEDATE AS CREATEDATE, W.CLICK AS CLICK, W.USID AS USID
+		        FROM BOARD B RIGHT JOIN BOARD_WRITE W
+		        ON B.BID = W.BID
+		    )A LEFT JOIN USERINSERT U
+		    ON A.USID = U.USID
+		    WHERE U.USID = #{usId}
+		)E LEFT JOIN BOARD_BLIND L
+		ON E.BPID = L.BPID
+		WHERE L.BLINDID IS NULL
+	</select>
+	
+	<select id="whatIsCommentWrite" resultType="com.team1.userboard.UserBoardDTO">
+		SELECT F.BOARDNAME AS BOARDNAME, F.BID AS BID, F.BPID AS BPID, F.COID AS COID, F.CCONTENT AS CCONTENT, F.CREATEDATE AS CREATEDATE
+		     , F.NICKNAME AS NICKNAME
+		FROM
+		(
+		    SELECT I.BOARDNAME AS BOARDNAME, I.BID AS BID, I.BPID AS BPID, I.COID AS COID, I.CCONTENT AS CCONTENT, I.CREATEDATE AS CREATEDATE
+		         , U.NICKNAME AS NICKNAME
+		    FROM
+		    (
+		        SELECT A.BOARDNAME AS BOARDNAME, A.BID AS BID, A.BPID AS BPID, C.COID AS COID, C.CCONTENT AS CCONTENT, C.CDATE AS CREATEDATE
+		             , C.USID AS USID
+		        FROM
+		        (
+		            SELECT B.BNAME AS BOARDNAME, B.BID AS BID, W.BPID AS BPID
+		            FROM BOARD B RIGHT JOIN BOARD_WRITE W
+		            ON B.BID = W.BID
+		        )A LEFT JOIN BOARD_INFO_COMMENT C
+		        ON A.BPID = C.BPID
+		    )I LEFT JOIN USERINSERT U
+		    ON I.USID = U.USID
+		    WHERE I.USID = #{usId}
+		)F LEFT JOIN BOARD_COMMENT_BLIND M
+		ON F.COID = M.COID
+		WHERE M.BID IS NULL
+	</select>
+	
+
+	<select id="isUserExist" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM USERINSERT
+		WHERE USERID=#{userId}
+  		  AND SSDFRONT=#{ssdFront} AND SSDBACK=#{ssdBack}
+	</select>
+	
+	<select id="isIdExist" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM USERINSERT
+		WHERE UNAME = #{uname} 
+  		  AND SSDFRONT = #{ssdFront} AND SSDBACK = #{ssdBack}
+	</select>
+
+	<select id="isHaveAccount" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM BANK_INSERT
+		WHERE USID=#{usId}
+	</select>
+	
+	<select id="whatIsSsd" resultType="com.team1.user.UserDTO">
+		SELECT USERID, SSDFRONT, SSDBACK
+		FROM USERINSERT
+		WHERE USERID=#{userId}
+	</select>
+	
+	<select id="whatIsId" resultType="java.lang.String">
+		SELECT USERID
+		FROM USERINSERT
+		WHERE UNAME=#{uname}
+	    AND SSDFRONT= #{ssdFront}
+	    AND SSDBACK = #{ssdBack}
+	</select>
+	
+	<select id="whatIsPassword" resultType="java.lang.String">
+		SELECT CRYPTPACK.DECRYPT(PASSWORD, #{password}) AS PASSWORD
+		FROM USERINSERT
+		WHERE USID = #{usId}
+	</select>
+	
+	<select id="whatIsUsId" resultType="java.lang.Integer">
+		SELECT USID
+		FROM USERINSERT
+		WHERE USERID=#{userId}
+	    AND SSDFRONT= #{ssdFront}
+	    AND SSDBACK = #{ssdBack}
+	</select>
+	
+	<update id="changePwd" parameterType="java.lang.String">
+		UPDATE USERINSERT
+		SET PASSWORD=CRYPTPACK.ENCRYPT(#{password}, #{password})
+		WHERE USERID= #{userId}
+	    AND SSDFRONT= #{ssdFront}
+	    AND SSDBACK = #{ssdBack}
+	</update>
+	
+	<insert id="addUser" parameterType="com.team1.user.UserDTO">
+		INSERT INTO USERINSERT(USID, UNAME, USERID, PASSWORD, NICKNAME, SSDFRONT, SSDBACK, TELEPHONE, UADDRESS)
+		VALUES(SEQ4.NEXTVAL, #{uname}, #{userId}, CRYPTPACK.ENCRYPT(#{password}, #{password}), #{nickName}, #{ssdFront}, #{ssdBack}, #{telephone}, #{uaddress})
+	</insert>
+	
+	<insert id="addUserSkill" parameterType="java.lang.Integer">
+		INSERT INTO USER_INTEREST_SKILL(USID, SKID)
+		VALUES(#{usId}, #{skId})
+	</insert>
+	
+	<insert id="addUserAccount">
+		INSERT INTO BANK_INSERT(BKIID, USID, ACCOUNT, BKID)
+		VALUES(SEQ132.NEXTVAL, #{usId}, #{account}, #{bkId})
+	</insert>
+	
+	<update id="updateUser" parameterType="com.team1.user.UserDTO">
+		UPDATE USERINSERT
+		SET PASSWORD= CRYPTPACK.ENCRYPT(#{password}, #{password}), NICKNAME = #{nickName}
+		            , TELEPHONE = #{telephone}, UADDRESS = #{uaddress}
+		WHERE USID = #{usId}
+	</update>
+	
+	<delete id="removeUser">
+		DELETE
+		FROM USERINSERT
+		WHERE USID = #{usId}
+	</delete>
+	
+	<delete id="removeUserSkill">
+		DELETE
+		FROM USER_INTEREST_SKILL
+		WHERE USID=#{usId}
+	</delete>
+	
+	<update id="usPhotoUpdate">
+		UPDATE USERINSERT
+		SET USPHOTO = #{usPhoto}
+		WHERE USID = #{usId}
+	</update>
+	
+	<select id="getUsPhoto" resultType="java.lang.String">
+		SELECT USPHOTO
+		FROM USERINSERT
+		WHERE USID = #{usId}
+	</select>
+
+</mapper>

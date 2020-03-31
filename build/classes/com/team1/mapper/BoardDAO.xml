@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 인터페이스 IBoardDAO 를 구체화시킬 마이바티스 xml -->
+<mapper namespace="com.team1.board.IBoardDAO">
+
+	<!-- 게시판 번호와 이름을 조회하는 쿼리문 -->
+	<select id="boardName" resultType="com.team1.board.BoardDTO">
+		SELECT BID, BNAME
+		FROM BOARD
+	</select>
+
+	<!-- 게시판의 공통 요소를 table에 전해줄 쿼리문 (게시판 번호, 게시글 번호, 제목, 작성자, 등록일) -->
+	<select id="lists" resultType="com.team1.board.BoardDTO">
+		SELECT C.BID AS BID, C.BPID AS BPID,
+		C.POSTTITLE AS POSTTITLE, C.CONTENT AS CONTENT, C.CREATEDATE AS CREATEDATE
+		, C.CLICK AS CLICK, U.NICKNAME AS NICKNAME
+		FROM
+		(
+		    SELECT W.BID AS BID, W.BPID AS BPID, W.POSTTITLE AS POSTTITLE, W.CONTENT AS CONTENT, W.CREATEDATE AS CREATEDATE, W.CLICK AS CLICK
+		         , W.USID AS USID
+		    FROM BOARD_WRITE W LEFT JOIN BOARD_BLIND B
+		    ON W.BPID = B.BPID
+		    WHERE W.BID = #{bid} AND B.BLINDID IS NULL
+		) C LEFT JOIN USERINSERT U
+		ON C.USID = U.USID
+		ORDER BY BPID DESC
+	</select>
+	
+	<!-- 질문 게시판 답변 채택 여부까지 table에 전해줄 리스트 쿼리문 -->
+	<select id="questionList" resultType="com.team1.board.BoardDTO">
+		SELECT D.BID AS BID, D.BPID AS BPID, D.POSTTITLE AS POSTTITLE, D.CONTENT AS CONTENT
+		     , D.CREATEDATE AS CREATEDATE, D.CLICK AS CLICK, D.NICKNAME AS NICKNAME
+		     , D.QID AS QID, NVL(E.SELECTID, 0) AS SELECTID
+		FROM
+		(
+		    SELECT A.BID AS BID, A.BPID AS BPID, A.POSTTITLE AS POSTTITLE, A.CONTENT AS CONTENT
+		         , A.CREATEDATE AS CREATEDATE, A.CLICK AS CLICK, A.NICKNAME AS NICKNAME
+		         , Q.QID AS QID
+		    FROM
+		    (
+		        SELECT C.BID AS BID, C.BPID AS BPID, C.POSTTITLE AS POSTTITLE, C.CONTENT AS CONTENT,
+		        C.CREATEDATE AS CREATEDATE, C.CLICK AS CLICK, U.NICKNAME AS NICKNAME
+		        FROM
+		        (
+		            SELECT W.BID AS BID, W.BPID AS BPID, W.POSTTITLE AS POSTTITLE, W.CONTENT AS CONTENT, W.CREATEDATE AS CREATEDATE, W.CLICK AS CLICK
+		                 , W.USID AS USID
+		            FROM BOARD_WRITE W LEFT JOIN BOARD_BLIND B
+		            ON W.BPID = B.BPID
+		            WHERE W.BID = #{bid} AND B.BLINDID IS NULL
+		        ) C LEFT JOIN USERINSERT U
+		        ON C.USID = U.USID
+		    ) A LEFT JOIN QUESTION_ANSWER Q
+		    ON A.BPID = Q.BPID
+		) D LEFT JOIN QUESTION_ANSWER_SELECT E
+		ON D.QID = E.QID
+		ORDER BY BPID DESC
+	</select>
+
+	<!-- 자유 게시판 검색 된 결과를 보여주는 쿼리문 -->
+	<select id="searchLists" resultType="com.team1.board.BoardDTO">
+		SELECT C.BID AS BID, C.BPID AS BPID, C.POSTTITLE AS POSTTITLE, C.CONTENT AS
+		CONTENT, C.CREATEDATE AS CREATEDATE
+		, C.CLICK AS CLICK, U.NICKNAME AS NICKNAME
+		FROM
+		(
+			SELECT W.BID AS BID, W.BPID AS BPID, W.POSTTITLE AS POSTTITLE, W.CONTENT AS CONTENT, W.CREATEDATE AS CREATEDATE
+         		 , W.CLICK AS CLICK, W.USID AS USID
+			FROM BOARD_WRITE W LEFT JOIN BOARD_BLIND B
+			ON W.BPID = B.BPID
+			WHERE W.BID = #{bid} AND B.BLINDID IS NULL
+		) C LEFT JOIN USERINSERT U
+		ON C.USID = U.USID
+		WHERE ${category} LIKE '%'||#{content}||'%'
+		ORDER BY BPID DESC
+	</select>
+	
+	<!-- 게시판 전체 게시글 수 (블라인드 처리 포함, 검색값이 없을 시)-->
+	<select id="dataCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM
+		(
+		    SELECT *
+		    FROM BOARD_WRITE B LEFT JOIN USERINSERT U
+		    ON B.USID = U.USID
+		    WHERE BID = #{bid}
+		)A LEFT JOIN BOARD_BLIND L
+		ON A.BPID = L.BPID
+		WHERE L.BLINDID IS NULL
+	</select>
+	
+	<!-- 게시판 전체 게시글 수 (블라인드 처리 포함, 검색값이 있을 시 -->
+	<select id="searchDataCount" resultType="java.lang.Integer">
+	SELECT COUNT(*) AS COUNT
+	FROM
+	(
+	    SELECT *
+	    FROM BOARD_WRITE W LEFT JOIN BOARD_BLIND B
+	    ON W.BPID = B.BPID
+	    WHERE W.BID = #{bid} AND B.BLINDID IS NULL
+	) C LEFT JOIN USERINSERT U
+	ON C.USID = U.USID
+	WHERE ${category} LIKE '%'||#{content}||'%'
+	ORDER BY BPID DESC
+	</select>
+	
+	<!-- 게시판 검색 값이 없을 시 페이징 처리 쿼리문 -->
+	<select id="listPage" resultType="com.team1.board.BoardDTO">
+		SELECT RNUM, BID, BPID, POSTTITLE, CONTENT, CREATEDATE, CLICK, NICKNAME
+		FROM
+		(
+		    SELECT ROWNUM AS RNUM, DATA.*
+		    FROM
+		    (
+		        SELECT B.BID AS BID, B.BPID AS BPID, B.POSTTITLE AS POSTTITLE, B.CONTENT AS CONTENT
+		             , B.CREATEDATE AS CREATEDATE, B.CLICK AS CLICK, U.NICKNAME AS NICKNAME
+		        FROM BOARD_WRITE B JOIN USERINSERT U
+		        ON B.USID = U.USID
+		        WHERE BID = #{bid}
+		    )DATA LEFT JOIN BOARD_BLIND L
+		    ON DATA.BPID = L.BPID
+		    WHERE L.BLINDID IS NULL
+		)
+		WHERE RNUM &gt;= 1 AND RNUM &lt;= 10
+	</select>
+	
+	<!-- 게시판 검색했을 시 페이징 처리 쿼리문 -->
+	<select id="searchPage" resultType="com.team1.board.BoardDTO">
+		SELECT RNUM, BID, BPID, POSTTITLE, CONTENT, CREATEDATE, CLICK, NICKNAME
+		FROM
+		(
+		    SELECT ROWNUM AS RNUM, DATA.*
+		    FROM
+		    (
+		        SELECT B.BID AS BID, B.BPID AS BPID, B.POSTTITLE AS POSTTITLE, B.CONTENT AS CONTENT
+		             , B.CREATEDATE AS CREATEDATE, B.CLICK AS CLICK, U.NICKNAME AS NICKNAME
+		        FROM BOARD_WRITE B JOIN USERINSERT U
+		        ON B.USID = U.USID
+		        WHERE BID = #{bid} AND ${category} LIKE '%'||#{content}||'%'
+		        ORDER BY BPID DESC
+		    )DATA LEFT JOIN BOARD_BLIND L
+		    ON DATA.BPID = L.BPID
+		    WHERE L.BLINDID IS NULL
+		)
+		WHERE RNUM &gt;= #{start} AND RNUM &lt;= #{end}
+	</select>
+
+	<!-- 게시글을 열람할 때 공통적인 쿼리문 (게시판 번호, 게시글 번호, 제목, 내용, 작성자, 등록일 -->
+	<select id="readData" resultType="com.team1.board.BoardDTO">
+		SELECT B.BID AS BID, B.BPID AS BPID, B.POSTTITLE AS POSTTITLE, B.CONTENT AS CONTENT
+		     , B.CREATEDATE AS CREATEDATE, B.USID AS USID, B.CLICK AS CLICK, U.NICKNAME AS NICKNAME
+		FROM BOARD_WRITE B LEFT JOIN USERINSERT U
+		ON B.USID = U.USID
+		WHERE B.BID = #{bid} AND B.BPID = #{bpid}
+	</select>
+	
+	<!-- 질문 게시글을 열람할 때 쿼리문 → QID(답변번호)가 필요하기 때문 -->
+	<select id="readQuestion" resultType="java.lang.Integer">
+		SELECT A.QID AS QID
+		FROM
+		(
+		    SELECT B.BID AS BID, B.BPID AS BPID, B.POSTTITLE AS POSTTITLE, B.CONTENT AS CONTENT, B.CREATEDATE AS CREATEDATE
+		         , U.NICKNAME AS NICKNAME
+		    FROM BOARD_WRITE B LEFT JOIN USERINSERT U
+		    ON B.USID = U.USID
+		    WHERE B.BID = #{bid} AND B.BPID = #{bpid}
+		)W LEFT JOIN QUESTION_ANSWER A
+		ON W.BPID = A.BPID
+	</select>
+
+	<!-- 열람한 게시글의 댓글을 보는 공통적인 쿼리문 (댓글, 댓글 작성일자, 작성자) -->
+	<select id="readComment" resultType="com.team1.board.BoardDTO">
+		SELECT A.COID AS COID, A.CCONTENT AS CCONTENT, A.CDATE AS COMMENTDATE
+		     ,A.USID AS USID ,U.NICKNAME AS NICKNAME
+		FROM
+		(
+		    SELECT C.COID AS COID, C.CCONTENT AS CCONTENT, C.CDATE AS CDATE, C.USID AS
+		    USID
+		    FROM BOARD_INFO_COMMENT C LEFT JOIN BOARD_COMMENT_BLIND B
+		    ON C.COID = B.COID
+		    WHERE C.BPID = #{bpid} AND B.BID IS NULL
+		) A LEFT JOIN USERINSERT U
+		ON A.USID =	U.USID
+		ORDER BY CDATE ASC
+	</select>
+
+	<!-- 질문 게시판의 답변 쿼리문 / 채택, 답변 블라인드 여부도 같이 확인 -->
+	<select id="questionComment" resultType="com.team1.board.BoardDTO">
+		SELECT P.BID AS BID, P.BPID AS BPID, P.QUCONTENT AS QUCONTENT, P.QUCREATEDATE AS QUCREATEDATE, P.NICKNAME AS NICKNAME
+		     , P.QID AS QID, P.SELECTID AS SELECTID, P.USID AS USID
+		FROM
+		(
+		    SELECT S.BID AS BID, S.BPID AS BPID, S.QUCONTENT AS QUCONTENT, S.QUCREATEDATE AS QUCREATEDATE, S.NICKNAME AS NICKNAME
+		         , S.QID AS QID, S.USID AS USID, E.SELECTID AS SELECTID
+		    FROM
+		    (
+		        SELECT B.BID AS BID, B.BPID AS BPID, B.USID AS USID, A.QUCONTENT AS QUCONTENT, A.QUCREATEDATE AS QUCREATEDATE, A.NICKNAME AS NICKNAME
+		             , A.QID AS QID
+		        FROM
+		        (
+		            SELECT Q.CONTENT AS QUCONTENT, Q.CDATE AS QUCREATEDATE, U.NICKNAME AS
+		            NICKNAME, Q.QID AS QID, Q.BPID AS BPID, Q.USID AS USID
+		            FROM QUESTION_ANSWER Q LEFT JOIN USERINSERT U
+		            ON Q.USID = U.USID
+		            WHERE BPID = #{bpid}
+		        )A LEFT JOIN BOARD_WRITE B
+		        ON A.BPID = B.BPID
+		    )S LEFT JOIN QUESTION_ANSWER_SELECT E
+		    ON S.QID = E.QID
+		)P LEFT JOIN QUESTION_ANSWER_BLIND D
+		ON P.QID = D.QID
+		WHERE D.ANSWERBID IS NULL
+		ORDER BY SELECTID, QUCREATEDATE
+	</select>
+	
+	<!-- 질문 게시판 답변 채택 테이블 INSERT 쿼리문 -->
+	<insert id="answerSelect">
+		INSERT INTO QUESTION_ANSWER_SELECT
+		VALUES(SEQ54.NEXTVAL, SYSDATE, #{qid})
+	</insert>
+	
+	<!-- 답변 채택 취소 쿼리문 -->
+	<delete id="answerCancle">
+		DELETE
+		FROM QUESTION_ANSWER_SELECT	
+		WHERE SELECTID = #{selectid}
+	</delete>
+	
+	<!-- 질문 게시판 답변 채택 여부 확인 쿼리문 -->
+	<select id="answerCheck" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM
+		(
+		    SELECT Q.CONTENT AS QUCONTENT, Q.CDATE AS QUCREATEDATE
+		         , U.NICKNAME AS NICKNAME , Q.QID AS QID
+		    FROM QUESTION_ANSWER Q LEFT JOIN USERINSERT U
+		    ON Q.USID =	U.USID
+		    WHERE BPID = #{bpid}
+		) A LEFT JOIN QUESTION_ANSWER_SELECT S
+		ON A.QID = S.QID
+		WHERE S.SELECTID IS NOT NULL
+	</select>
+
+	<!-- 질문 게시판 답변 쿼리문 -->
+	<select id="questionCocoment"
+		resultType="com.team1.board.BoardDTO">
+		SELECT C.COCONTENT AS COCONTENT, C.CDATE AS QUCOCREATEDATE, U.NICKNAME AS
+		NICKNAME
+		FROM QUESTION_ANSWER Q, QUESTION_COMMENT C, USERINSERT U
+		WHERE
+		Q.QID = C.QID AND C.USID = U.USID
+	</select>
+
+	<!-- 질문 게시판 답변 작성 쿼리문 -->
+	<!-- 로그인 한 다음 세션에서 usId 를 가져와야 하는데 아직 통합이 안되서 정적으로 3 넣어두기 -->
+	<insert id="answerInsert">
+		INSERT INTO QUESTION_ANSWER(QID, BPID, CONTENT, CDATE, USID)
+		VALUES(SEQ13.NEXTVAL, #{bpid}, #{content}, SYSDATE, #{usId})
+	</insert>
+	
+	<!-- 답변 블라인드 쿼리문 -->
+	<insert id="answerBlind">
+		INSERT INTO QUESTION_ANSWER_BLIND (ANSWERBID, BDATE, QID)
+		VALUES(SEQ107.NEXTVAL, SYSDATE, #{qid})
+	</insert>
+	
+	<!-- 답변 삭제 쿼리문 -->
+	<delete id="answerDelete">
+		DELETE
+		FROM QUESTION_ANSWER
+		WHERE QID = #{qid}
+	</delete>
+	
+	<!-- 질문 게시판 답변 댓글 쿼리문 -->
+	<select id="answerComment" resultType="com.team1.board.BoardDTO">
+		SELECT C.QID AS QID, C.COCONTENT AS COCONTENT, C.CDATE AS QUCOCREATEDATE, U.NICKNAME AS NICKNAME
+		FROM QUESTION_ANSWER Q, QUESTION_COMMENT C, USERINSERT U
+		WHERE
+		Q.QID = #{qid} AND C.USID = U.USID
+	</select>
+	
+	<!-- 정보 게시판 리스트 출력 쿼리문 (추천 개수까지) -->
+	<select id="infoList" resultType="com.team1.board.BoardDTO">
+		SELECT A.BID AS BID, A.BPID AS BPID, A.POSTTITLE AS POSTTITLE, A.CONTENT AS CONTENT, A.CREATEDATE AS CREATEDATE
+		     , A.CLICK AS CLICK, A.NICKNAME AS NICKNAME, NVL(H.COUNT, 0) AS LIKECOUNT
+		FROM
+		(
+		    SELECT C.BID AS BID, C.BPID AS BPID, C.POSTTITLE AS POSTTITLE, C.CONTENT AS CONTENT
+		         , C.CREATEDATE AS CREATEDATE, C.CLICK AS CLICK, U.NICKNAME AS NICKNAME
+		    FROM
+		    (
+		        SELECT W.BID AS BID, W.BPID AS BPID, W.POSTTITLE AS POSTTITLE, W.CONTENT AS CONTENT, W.CREATEDATE AS CREATEDATE, W.CLICK AS CLICK
+		             , W.USID AS USID
+		        FROM BOARD_WRITE W LEFT JOIN BOARD_BLIND B
+		        ON W.BPID = B.BPID
+		        WHERE W.BID = #{bid} AND B.BLINDID IS NULL
+		    ) C LEFT JOIN USERINSERT U
+		    ON C.USID = U.USID
+		) A LEFT JOIN (SELECT BPID, COUNT(*) AS COUNT
+		           FROM BOARD_INFO_LIKE
+		           GROUP BY BPID) H
+		ON A.BPID = H.BPID
+		ORDER BY BPID DESC
+	</select>
+	
+	<!-- 건의 게시판 리스트 출력 쿼리문 (비밀글 여부까지) -->
+	<select id="suggestList" resultType="com.team1.board.BoardDTO">
+		SELECT A.BID AS BID, A.BPID AS BPID, A.POSTTITLE AS POSTTITLE, A.CONTENT AS CONTENT
+		     , A.CREATEDATE AS CREATEDATE, A.CLICK AS CLICK, A.NICKNAME AS NICKNAME, NVL(H.SSID,0) AS HIDECHECK, H.SSID AS SSID
+		     , A.USID AS USID
+		FROM
+		(
+		    SELECT C.BID AS BID, C.BPID AS BPID, C.POSTTITLE AS POSTTITLE, C.CONTENT AS CONTENT
+		         , C.CREATEDATE AS CREATEDATE, C.CLICK AS CLICK, U.NICKNAME AS NICKNAME, C.USID AS USID
+		    FROM
+		    (
+		        SELECT W.BID AS BID, W.BPID AS BPID, W.POSTTITLE AS POSTTITLE, W.CONTENT AS CONTENT, W.CREATEDATE AS CREATEDATE, W.CLICK AS CLICK
+		             , W.USID AS USID
+		        FROM BOARD_WRITE W LEFT JOIN BOARD_BLIND B
+		        ON W.BPID = B.BPID
+		        WHERE W.BID = #{bid} AND B.BLINDID IS NULL
+		    ) C LEFT JOIN USERINSERT U
+		    ON C.USID = U.USID
+		)A LEFT JOIN BOARD_SECRET_SELECT H
+		ON A.BPID = H.BPID
+		ORDER BY BPID DESC
+	</select>
+	
+	<!-- 정보 게시판 추천 수 확인 쿼리문 -->
+	<select id="likeCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS LIKECOUNT
+		FROM BOARD_WRITE B RIGHT JOIN BOARD_INFO_LIKE L
+		ON B.BPID = L.BPID
+		WHERE B.BPID = #{bpid}
+	</select>
+	
+	<!-- 정보 게시판 추천 여부 확인 쿼리문 -->
+	<!-- 1이면 이미 추천을 했다는 것, 0이면 추천을 아직 안한것(추천 가능) -->
+	<select id="likeOk" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS LIKECHECK
+		FROM BOARD_WRITE B LEFT JOIN BOARD_INFO_LIKE L
+		ON B.BPID = L.BPID
+		WHERE B.BID = 2 AND B.BPID = #{bpid} AND L.USID = #{usId}
+	</select>
+	
+	<!-- 정보 게시판 추천하는 쿼리문 (추천하기 테이블에 INSERT) -->
+	<insert id="likeInsert">
+		INSERT INTO BOARD_INFO_LIKE
+		VALUES (SEQ27.NEXTVAL, SYSDATE, #{bpid}, #{usId})
+	</insert>
+	
+	<!-- 정보 게시판 추천 취소하는 쿼리문 (추천하기 테이블에 DELETE) -->
+	<delete id="likeDelete">
+		DELETE
+		FROM BOARD_INFO_LIKE
+		WHERE BPID = #{bpid} AND USID = #{usId}
+	</delete>
+	
+	<!-- 게시판 글 작성 쿼리문 -->
+	<insert id="boardInsert">
+		INSERT INTO BOARD_WRITE (BID, BPID, POSTTITLE, CONTENT, CREATEDATE, USID)
+		VALUES (#{bid}, SEQ12.NEXTVAL, #{postTitle}, #{content}, SYSDATE, #{usId})
+	</insert>
+	
+	<!-- 비밀글 체크 입력 쿼리문 (건의 게시판) -->
+	<insert id="secretInsert">
+		INSERT INTO BOARD_SECRET_SELECT
+		VALUES(SEQ121.NEXTVAL, #{bpid})
+	</insert>
+
+	<!-- 게시판 글 수정 쿼리문 -->
+	<update id="freeModify">
+		UPDATE BOARD_WRITE
+		SET POSTTITLE = #{postTitle}, CONTENT = #{content}, CREATEDATE = SYSDATE
+		WHERE BPID = #{bpid}
+	</update>
+
+	<!-- 게시판 글 블라인드 쿼리문 -->
+	<insert id="freeBlind">
+		INSERT INTO BOARD_BLIND(BLINDID, BLINDDATE, BPID)
+		VALUES (SEQ100.NEXTVAL, SYSDATE, #{bpid})
+	</insert>
+
+	<!-- 게시판 글 블라인드 쿼리문 -->
+	<insert id="commentBlind">
+		INSERT INTO BOARD_COMMENT_BLIND
+		VALUES(SEQ111.NEXTVAL, SYSDATE, #{coid})
+	</insert>
+
+	<!-- 게시판 댓글 입력 쿼리문 -->
+	<insert id="commentInsert">
+		INSERT INTO BOARD_INFO_COMMENT
+		VALUES(SEQ24.NEXTVAL, #{ccontent}, SYSDATE, #{bpid}, #{usId})
+	</insert>
+	
+	<!-- 게시판 게시글 수 -->
+	<select id="boardCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS BOARDCOUNT
+		FROM BOARD_WRITE B LEFT JOIN USERINSERT U
+		ON B.USID = U.USID
+		WHERE BID = #{bid}
+	</select>
+
+	<!-- 게시판 댓글 수 -->
+	<select id="commentCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS
+		COMMENTCOUNT
+		FROM
+		(
+			SELECT *
+			FROM BOARD_INFO_COMMENT C LEFT JOIN BOARD_COMMENT_BLIND B
+			ON C.COID = B.COID
+			WHERE C.BPID = #{bpid} AND B.BID IS NULL
+		) A LEFT JOIN USERINSERT U
+		ON A.USID =
+		U.USID
+	</select>
+
+	<!-- 게시글 조회 수 증가 쿼리문 -->
+	<update id="hitCount">
+		UPDATE BOARD_WRITE
+		SET CLICK = CLICK + 1
+		WHERE BPID = #{bpid}
+	</update>
+
+	<!-- 게시글 조회 수 조회 쿼리문 -->
+	<select id="hit" resultType="java.lang.Integer">
+		SELECT CLICK
+		FROM BOARD_WRITE
+		WHERE BID = #{bid} AND BPID = #{bpid}
+	</select>
+
+	<!-- 게시글 제일 높은 번호 쿼리문 -->
+	<select id="maxBoardNumber" resultType="java.lang.Integer">
+		SELECT MAX(BPID) AS BPID
+		FROM BOARD_WRITE
+		WHERE BID = #{bid}
+	</select>
+	
+	<!-- 신고 항목 번호와 이름을 조회하는 쿼리문 -->
+	<select id="reportName" resultType="com.team1.board.BoardDTO">
+		SELECT RTID, RTNAME
+		FROM REPORT_TYPE
+	</select>
+
+	<!-- 신고 접수 쿼리문 -->
+	<insert id="reportInsert">
+		INSERT INTO BOARD_RECEIVE (RPID, USID, RPTEXT, RPDATE, RTID, BPID)
+		VALUES(SEQ60.NEXTVAL, #{usId}, #{rpText}, SYSDATE, #{rtId}, #{bpid})
+	</insert>
+</mapper>
+ 

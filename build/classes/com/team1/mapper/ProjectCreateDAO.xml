@@ -1,0 +1,567 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+ <!DOCTYPE mapper  
+ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"  
+ "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.team1.pro.create.IProjectCreateDAO">
+
+	<!-- 유저의 id 를 통해 유저의 닉네임, 주소, 성별을 받아오는 메소드 -->
+	<select id="getUser" resultType="com.team1.user.UserInsertDTO">
+		SELECT NICKNAME AS NICKNAME
+		     , UADDRESS AS UADDRESS
+		     , TO_NUMBER(SUBSTR(SSDBACK, 1, 1)) AS SSDBACK
+		FROM USERINSERT
+		WHERE USID = #{usId}
+	</select>
+	
+	<!-- 기술 리스트를 받아오는 메소드 -->
+	<select id="skillList" resultType="com.team1.skill.SkillDTO">
+		SELECT SKID, SKNAME
+		FROM SKILL
+	</select>
+	
+	<!-- 유저의 id를 통해 레벨을 받아오는 메소드 -->
+	<select id="userLevel" resultType="java.lang.Integer">
+		SELECT MAX(LVID) AS LVID
+		FROM USLEVEL
+		WHERE POINT &lt; = (SELECT NVL(SUM(EXP), 0) AS TOT_EXP
+				            FROM STACKEXP
+				            WHERE USID=#{usId}
+				           )
+		
+		<!-- 『&lt;』 는 『<』 -->
+		<!-- 『&gt;』 는 『>』 -->
+		
+	</select>
+	
+	<!-- 프로젝트 기간을 받아오는 메소드 -->
+	<select id="getPeriod" resultType="com.team1.pro.period.PeriodDTO">
+		SELECT PROID, PROPERIOD
+		FROM PRO_PERIOD
+	</select>
+	
+	<!-- 인원 수를 받아오는 메소드 -->
+	<select id="getPeople" resultType="com.team1.people.peopleDTO">
+		SELECT PEOID, PEOCOUNT
+		FROM PEOPLE
+	</select>
+	
+	<!-- 온/오프라인 받아오는 메소드 -->
+	<select id="getOnlineRate" resultType="com.team1.pro.onlineRate.onlineRateDTO">
+		SELECT OID, ONRATE
+		FROM ONLINERATE
+	</select>
+	
+	<!-- 유저의 id를 통해 유저가 가진 칭호의 갯수를 받아오는 메소드 -->
+	<select id="userAchievementCount" resultType="java.lang.Integer">
+		SELECT COUNT(GAINACID) AS ACH_COUNT
+		FROM USER_ACHIEVEMENT
+		WHERE USID=#{usId}
+	</select>
+	
+	<!-- 유저의 id를 통해 유저의 칭호 받아오는 메소드 -->
+	<select id="userAchievement" resultType="com.team1.achievement.proachievementDTO">
+		SELECT ACNAME, ACID
+		FROM ACHIEVEMENT
+		WHERE ACID IN (SELECT ACID
+		               FROM USER_ACHIEVEMENT
+		               WHERE USID=#{usId})
+	</select>
+	
+	<!-- 프로젝트 개설 메소드 -->
+	<insert id="projectCreate" parameterType="com.team1.pro.create.ProjectCreateDTO">
+		INSERT INTO PRO_CREATE(PID, RNAME, CREATEDATE, ID, OID, PEOID, GID, MINLEVEL, MAXLEVEL, LINK, PCONTENTS, PROID, PADDRESS)
+		VALUES (SEQ1.NEXTVAL, #{rname}, SYSDATE, #{usId}, #{oid}, #{peoId}, #{gid}, #{minLevel}, #{maxLevel}, #{link}, #{pcontents}, #{proId}, #{paddress})
+	</insert>
+	
+	<!-- 프로젝트 id 를 이용하여 모집 인원 수 를 받아오는 메소드 -->
+	<select id="getPeopleCount" resultType="java.lang.Integer">
+		SELECT PEOCOUNT
+		FROM PEOPLE
+		WHERE PEOID=(SELECT PEOID
+		             FROM PRO_CREATE
+		             WHERE PID=#{pid})
+	</select>
+	
+	<!-- 프로젝트 id 를 이용하여 프로젝트 기간을 받아오는 메소드 -->
+	<select id="getProPeriod" resultType="java.lang.Integer">
+		SELECT PROPERIOD
+		FROM PRO_PERIOD
+		WHERE PROID=(SELECT PROID
+		             FROM PRO_CREATE
+		             WHERE PID=#{pid})
+	</select>
+	
+	<!-- 프로젝트 id 를 이용하여 온라인 비율을 받아오는 메소드 -->
+	<select id="getOnRate" resultType="java.lang.Integer">
+		SELECT ONRATE
+		FROM ONLINERATE
+		WHERE OID=(SELECT OID
+		           FROM PRO_CREATE
+		           WHERE PID=#{pid})
+	</select>
+	
+	<!-- 필요 없을듯.. -->
+	<!-- 프로젝트에 등록한 칭호 갯수를 반환하는 메소드 -->
+	<select id="test13" resultType="java.lang.Integer">
+		SELECT NVL(COUNT(*), 0) AS ACH_COUNT
+		FROM PRO_BADGE
+		WHERE PID=#{pid}
+	</select>
+	
+	<!-- 프로젝트에 등록한 칭호를 반환하는 메소드 -->
+	<select id="getAchievement" resultType="com.team1.achievement.proachievementDTO">
+		SELECT ACNAME
+		FROM ACHIEVEMENT
+		WHERE ACID IN (SELECT ACID
+		               FROM USER_ACHIEVEMENT
+		               WHERE GAINACID IN (SELECT GAINACID
+		                                  FROM PRO_BADGE
+		                                  WHERE PID=#{pid}))
+	</select>
+	
+	<!-- 필요 없을듯... -->
+	<!-- 프로젝트에 등록한 기술 갯수를 반환하는 메소드 -->
+	<select id="getSkillCount" resultType="java.lang.Integer">
+		SELECT NVL(COUNT(*), 0) AS SKILL_COUNT
+		FROM PRO_SKILL
+		WHERE PID=#{pid}
+	</select>
+	
+	<!-- 프로젝트에 등록한 기술을 반환하는 메소드 -->
+	<select id="getSkill" resultType="com.team1.skill.SkillDTO">
+		 
+		SELECT SKNAME
+		FROM SKILL
+		WHERE SKID IN (SELECT SKID
+		               FROM PRO_SKILL
+		               WHERE PID=#{pid})
+		<!-- 
+		SELECT SKNAME
+		FROM SKILL
+		WHERE SKID=${SKID};
+		 -->               
+	</select>
+	
+	<!-- 프로젝트 id 를 이용하여 프로젝트에 등록한 주제를 반환하는 메소드 -->
+	<select id="getSubject" resultType="java.lang.String">
+		SELECT SNAME
+		FROM PRO_SUBJECT_INSERT
+		WHERE PID=#{pid}
+	</select>
+	
+	<!-- 프로젝트의 정보를 반환하는 메소드 -->
+	<select id="getProject" resultType="com.team1.pro.create.ProjectCreateDTO">
+		<!-- SELECT RNAME, CREATEDATE, ID, OID, PEOID, GID, MINLEVEL, MAXLEVEL, LINK, PCONTENTS, PROID, PADDRESS -->
+		<!-- SELECT RNAME, TO_CHAR(CREATEDATE, 'YYYY-MM-DD HH24:MI:SS') AS CREATEDATE, ID, OID, PEOID, GID, MINLEVEL, MAXLEVEL, LINK, PCONTENTS, PROID, PADDRESS -->
+		SELECT PID, RNAME, TO_CHAR(CREATEDATE, 'YYYY"년 "MM"월 "DD"일 " HH24"시 "MI"분"') AS CREATEDATE, ID, OID, PEOID, GID, MINLEVEL, MAXLEVEL, LINK, PCONTENTS, PROID, PADDRESS
+		FROM PRO_CREATE
+		WHERE PID=#{pid}
+	</select>
+	
+	<!-- 프로젝트 시작일을 반환하는 메소드 -->
+	<select id="getProjectStartDate" resultType="java.lang.String">
+		<!-- SELECT (CREATEDATE+30) AS STARTDATE --> <!-- 이 경우 무조건 30일 후 -->
+		<!-- SELECT ADD_MONTHS(CREATEDATE, 1) AS STARTDATE --> <!-- 1월 31일 개설했을 시 한달 후는 2월 28일로 됌. -->
+		<!-- SELECT TO_CHAR(ADD_MONTHS(CREATEDATE, 1), 'YYYY-MM-DD') || (' 09:00') AS STARTDATE -->
+		SELECT TO_CHAR(ADD_MONTHS(CREATEDATE, 1), 'YYYY"년 "MM"월 "DD"일 "') || ('14시 15분') AS STARTDATE
+		FROM PRO_CREATE
+		WHERE PID=#{pid}
+	</select>
+	
+	<!-- 프로젝트 개설 시(바로 직후에) 프로젝트 번호를 알아오는 메소드 -->
+	<select id="getCreatePrjId" resultType="java.lang.Integer">
+		SELECT MAX(PID)
+		FROM PRO_CREATE
+		WHERE ID=#{usId}
+	</select>
+	
+	<!-- 주제를 등록하는 메소드 -->
+	<insert id="insertPcontents"> <!-- parameterType="com.team1.pro.subject"> -->
+		INSERT INTO PRO_SUBJECT_INSERT(SID, PID, SNAME)
+		VALUES (SEQ53.NEXTVAL, #{pid}, #{sname})
+	</insert>
+	
+	<!-- 프로젝트에 참여한 인원 -->
+	<select id="joinCount" resultType="java.lang.Integer">
+		SELECT NVL(COUNT(*), 0) AS JOIN_COUNT
+		FROM PRO_JOIN
+		WHERE PID=#{pid}
+	</select>
+	
+	<!-- 프로젝트에 탈퇴한 인원 -->
+	<select id="exitCount" resultType="java.lang.Integer">
+		SELECT NVL(COUNT(*), 0) AS EXIT_COUNT
+		FROM PRO_EXIT
+		WHERE PJID IN (SELECT PJID
+		               FROM PRO_JOIN
+		               WHERE PID=#{pid})
+	</select>
+	
+	<!-- 현재 프로젝트에 참여중인 인원 -->
+	<select id="totProJoinCount" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM PRO_JOIN
+		WHERE PID=#{pid} 
+		  AND PJID NOT IN (SELECT PJID
+		                   FROM PRO_EXIT
+		                   WHERE PJID IN (SELECT PJID
+		                                  FROM PRO_JOIN
+		                                  WHERE PID=#{pid}))
+	</select>
+	
+	<select id="totProJoin" resultType="java.lang.Integer">
+		SELECT USID
+		FROM PRO_JOIN
+		WHERE PID=#{pid} 
+		  AND PJID NOT IN (SELECT PJID
+		                   FROM PRO_EXIT
+		                   WHERE PJID IN (SELECT PJID
+		                                  FROM PRO_JOIN
+		                                  WHERE PID=#{pid}))
+		ORDER BY PJDATE ASC
+	</select>
+	
+	<!-- 기술을 등록하는 메소드 -->
+	<insert id="insertSkill">
+		INSERT INTO PRO_SKILL (SKID, PID, PSID)
+		VALUES (#{skId}, #{pid}, SEQ22.NEXTVAL)
+	</insert>
+	
+	<!-- 칭호를 등록하는 메소드 -->
+	<insert id="insertAch">
+		INSERT INTO PRO_BADGE (BID, PID, GAINACID)
+		VALUES (SEQ34.NEXTVAL, #{pid}, (SELECT GAINACID
+		                             FROM USER_ACHIEVEMENT
+		                             WHERE USID=#{usId} AND ACID=#{acId}))
+	</insert>
+	
+	<!-- 채팅창 -->
+	<select id="getMessage" resultType="com.team1.pro.message.messageDTO">
+		<!-- SELECT TO_CHAR(MDATE, 'YYYY-MM-DD HH24:MI:SS') AS MDATE, MCONTENTS, PJID -->
+		SELECT (TO_CHAR(MDATE, ' [YYYY-MM-DD HH24:MI:SS]')) || ' ' || (MCONTENTS) AS MCONTENTS, PMID
+		FROM PRO_MESSAGE
+		WHERE PJID IN (SELECT PJID
+		               FROM PRO_JOIN
+		               WHERE PID=#{pid})
+		ORDER BY PMSID ASC
+	</select>
+	
+	<!-- 채팅 입력 -->
+	<insert id="sendMessage" parameterType="com.team1.pro.message.messageDTO">
+		INSERT INTO PRO_MESSAGE (MDATE, MCONTENTS, PJID, PMID, PMSID)
+		VALUES (SYSDATE, #{mcontents}, (SELECT MAX(PJID) AS PJID FROM PRO_JOIN WHERE USID=#{usId} AND PID=#{pid}), #{pmId}, SEQ30.NEXTVAL)
+	</insert>
+	
+	<!-- 프로젝트 삭제 -->
+	<delete id="deleteProject">
+		DELETE
+		FROM PRO_CREATE
+		WHERE PID=#{pid}
+	</delete>
+	
+	<!-- 프로젝트 나가기 -->
+	<insert id="exitProject">
+		INSERT INTO PRO_EXIT(PEID, PEDATE, PJID)
+		VALUES (SEQ66.NEXTVAL, SYSDATE, (SELECT MAX(PJID) AS PJID FROM PRO_JOIN WHERE USID=#{usId} AND PID=#{pid}))
+	</insert>
+	
+	<!-- 나이 구하는 메소드 -->
+	<select id="userAge" resultType="java.lang.Integer">
+		SELECT EXTRACT(YEAR FROM SYSDATE)-(DECODE(SUBSTR(SSDBACK,1,1), '1', '19', '2', '19', '20') || SUBSTR(SSDFRONT,1, 2)) + 1 AS AGE
+		FROM USERINSERT
+		WHERE USID=${usId}
+	</select>
+	
+	<!-- 진행 중인 프로젝트의 갯수를 구하는 메소드(진행중+완료된 갯수) -->
+	<select id="ingProject" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM PRO_PROGRESS
+		WHERE PID IN (SELECT PID
+		              FROM PRO_JOIN
+		              WHERE USID=#{usId}
+		                AND PJID NOT IN (SELECT PJID
+		                                 FROM PRO_EXIT
+		                                 WHERE PJID IN (SELECT PJID
+		                                                FROM PRO_JOIN
+		                                                WHERE USID=#{usId})))
+	</select>
+	
+	<!-- 완료된 프로젝트의 갯수를 구하는 메소드 -->
+	<select id="completedProject" resultType="java.lang.Integer">
+		SELECT COUNT(*) AS COUNT
+		FROM PRO_PROGRESS
+		WHERE PID IN (SELECT PID
+		              FROM PRO_JOIN
+		              WHERE USID=#{usId}
+		                AND PJID NOT IN (SELECT PJID
+		                                 FROM PRO_EXIT
+		                                 WHERE PJID IN (SELECT PJID
+		                                                FROM PRO_JOIN
+		                                                WHERE USID=#{usId})))
+ 		 AND TO_DATE(PEDATE)>SYSDATE
+	</select>
+	
+	<!-- 완료된 프로젝트의 평균 기간을 구하는 메소드 -->
+	<select id="avgPeriod" resultType="java.lang.Double">
+	SELECT NVL(AVG(PROPERIOD), 0) AS AVG
+	FROM PRO_PERIOD
+	WHERE PROID IN (SELECT PROID
+	                FROM PRO_CREATE
+	                WHERE PID IN (SELECT PID
+	                              FROM PRO_PROGRESS
+	                              WHERE PID IN (SELECT PID
+	                                            FROM PRO_JOIN
+	                                            WHERE USID=${usId}
+	                                              AND PJID NOT IN (SELECT PJID
+	                                                               FROM PRO_EXIT
+	                                                               WHERE PJID IN (SELECT PJID
+	                                                                              FROM PRO_JOIN
+	                                                                              WHERE USID=${usId})))
+	                                AND TO_DATE(PEDATE)>SYSDATE))
+	</select>
+	
+	<select id="getOne" resultType="com.team1.user.UserInsertDTO">
+		SELECT USID, NICKNAME
+		FROM USERINSERT
+		WHERE USID IN (SELECT USID
+		               FROM (SELECT PJDATE, USID, PID, PJID, ROW_NUMBER() OVER(ORDER BY PJDATE) NUM
+		                     FROM PRO_JOIN
+		                     WHERE PID=#{pid}
+		                       AND PJID NOT IN (SELECT PJID
+		                                        FROM PRO_EXIT
+		                                        WHERE PJID IN (SELECT PJID
+		                                                       FROM PRO_JOIN
+		                                                       WHERE PID=#{pid}) ) )
+		                <![CDATA[WHERE NUM <= 4]]> )
+	</select>
+	
+	<select id="getTwo" resultType="com.team1.user.UserInsertDTO">
+		SELECT USID, NICKNAME
+		FROM USERINSERT
+		WHERE USID IN (SELECT USID
+		               FROM (SELECT PJDATE, USID, PID, PJID, ROW_NUMBER() OVER(ORDER BY PJDATE) NUM
+		                     FROM PRO_JOIN
+		                     WHERE PID=#{pid}
+		                       AND PJID NOT IN (SELECT PJID
+		                                        FROM PRO_EXIT
+		                                        WHERE PJID IN (SELECT PJID
+		                                                       FROM PRO_JOIN
+		                                                       WHERE PID=#{pid}) ) )
+		                <![CDATA[WHERE NUM > 4]]> )
+	</select>
+	
+	<!-- 프로젝트 수정 메소드 -->
+	<update id="projectUpdate" parameterType="com.team1.pro.create.ProjectCreateDTO">
+		UPDATE PRO_CREATE
+		SET RNAME=#{rname}, ID=#{usId}, OID=#{oid}, PEOID=#{peoId}, GID=#{gid}, MINLEVEL=#{minLevel}, MAXLEVEL=#{maxLevel}, LINK=#{link}, PCONTENTS=#{pcontents}, PROID=#{proId}, PADDRESS=#{paddress}
+		WHERE PID=#{pid}
+	</update>
+	
+	<!-- 등록된 기술을 제거하는 메소드 -->
+	<delete id="deleteSkill">
+		DELETE
+		FROM PRO_SKILL
+		WHERE PID=#{pid}
+	</delete>
+	
+	<!-- 등록된 칭호를 제거하는 메소드 -->
+	<delete id="deleteAch">
+		DELETE
+		FROM PRO_SUBJECT_INSERT
+		WHERE PID=#{pid}
+	</delete>
+	
+	<!-- 등록된 주제를 제거하는 메소드 -->
+	<delete id="deletePcontents">
+		DELETE
+		FROM PRO_BADGE
+		WHERE PID=#{pid}
+	</delete>
+	
+	<!-- 회원이 등록한 대표 칭호 -->
+	<select id="getUserAch" resultType="com.team1.achievement.proachievementDTO">
+		SELECT ACNAME
+		FROM ACHIEVEMENT
+		WHERE ACID IN (SELECT ACID
+		               FROM USER_ACHIEVEMENT
+		               WHERE GAINACID IN (SELECT GAINACID
+		                                  FROM USER_ACHIEVEMENT_REP)
+		                 AND USID=#{usId})
+	</select>
+	
+	<select id="memberInfo" resultType="com.team1.user.UserInsertDTO">
+	SELECT J.PID AS PID, U.USID AS USID, U.NICKNAME AS NICKNAME, U.UNAME AS USNAME, U.USLV AS USLV, U.USPHOTO AS USPHOTO
+	FROM (SELECT USID, NICKNAME, UNAME, USPHOTO, (SELECT NVL(MAX(LVID), 0) AS USLV
+	                                              FROM USLEVEL
+	                                              <![CDATA[ WHERE POINT <= (SELECT NVL(SUM(EXP), 0) ]]>
+	                                                              FROM STACKEXP
+	                                                              WHERE USID=#{usId})) AS USLV
+	                                    FROM USERINSERT
+	                                    WHERE USID = #{usId}) U LEFT JOIN ( SELECT PJID, PJDATE, USID, PID
+	                                                                  FROM PRO_JOIN
+	                                                                  WHERE PJID NOT IN (SELECT PJID
+	                                                                                     FROM PRO_EXIT)) J 
+	         ON J.USID = U.USID
+	         AND PID = #{pid}
+	</select>
+	
+	<!-- 윗 줄에 있을 멤버의 usId를 구하는 메소드 -->
+	<select id="divOne" resultType="java.lang.Integer">
+		SELECT USID
+		FROM PRO_JOIN
+		WHERE PJID IN (SELECT PJID
+				 		FROM (SELECT PJDATE, USID, PID, PJID, ROW_NUMBER() OVER(ORDER BY PJID) NUM
+						        FROM PRO_JOIN
+								WHERE PID=#{pid}
+								AND PJID NOT IN (SELECT PJID
+												FROM PRO_EXIT
+												WHERE PJID IN (SELECT PJID
+																FROM PRO_JOIN
+																WHERE PID=#{pid})
+                                              )
+                            )
+                      <![CDATA[WHERE NUM <= 4]]>
+			)
+		ORDER BY PJDATE ASC  
+	</select>
+   
+	<!-- 아래줄에 있을 멤버의 usId를 구하는 메소드 -->
+	<select id="divTwo" resultType="java.lang.Integer">
+		SELECT USID
+		FROM PRO_JOIN
+		WHERE PJID IN (SELECT PJID
+						FROM (SELECT PJDATE, USID, PID, PJID, ROW_NUMBER() OVER(ORDER BY PJID) NUM
+						      FROM PRO_JOIN
+						      WHERE PID=#{pid}
+						        AND PJID NOT IN (SELECT PJID
+						                         FROM PRO_EXIT
+						                         WHERE PJID IN (SELECT PJID
+						                                        FROM PRO_JOIN
+						                                        WHERE PID=#{pid})
+						                         )
+						       )
+						 <![CDATA[WHERE NUM > 4]]>
+						)
+		ORDER BY PJDATE ASC
+	</select>
+	
+	<!-- 1번째 평가 평균 점수 -->
+	<select id="avgEstimate1" resultType="com.team1.pro.member.estimate.MemberEstimateDTO">
+		SELECT NVL(AVG(SCORE), 0) AS SCORE, COUNT(*) AS COUNT
+		FROM PRO_MEMBER_ESTIMATE
+		WHERE MELID=1
+		  AND RECEIVE=#{usId}
+	</select>
+	
+	<!-- 2번째 평가 평균 점수 -->
+	<select id="avgEstimate2" resultType="com.team1.pro.member.estimate.MemberEstimateDTO">
+		SELECT NVL(AVG(SCORE), 0) AS SCORE, COUNT(*) AS COUNT
+		FROM PRO_MEMBER_ESTIMATE
+		WHERE MELID=2
+		  AND RECEIVE=#{usId}
+	</select>
+	
+	<!-- 3번째 평가 평균 점수 -->
+	<select id="avgEstimate3" resultType="com.team1.pro.member.estimate.MemberEstimateDTO">
+		SELECT NVL(AVG(SCORE), 0) AS SCORE, COUNT(*) AS COUNT
+		FROM PRO_MEMBER_ESTIMATE
+		WHERE MELID=3
+		  AND RECEIVE=#{usId}
+	</select>
+	
+	<!-- 4번째 평가 평균 점수 -->
+	<select id="avgEstimate4" resultType="com.team1.pro.member.estimate.MemberEstimateDTO">
+		SELECT NVL(AVG(SCORE), 0) AS SCORE, COUNT(*) AS COUNT
+		FROM PRO_MEMBER_ESTIMATE
+		WHERE MELID=4
+		  AND RECEIVE=#{usId}
+	</select>
+	
+	<!-- 5번째 평가 평균 점수 -->
+	<select id="avgEstimate5" resultType="com.team1.pro.member.estimate.MemberEstimateDTO">
+		SELECT NVL(AVG(SCORE), 0) AS SCORE, COUNT(*) AS COUNT
+		FROM PRO_MEMBER_ESTIMATE
+		WHERE MELID=5
+		  AND RECEIVE=#{usId}
+	</select>
+	
+	<!-- 6번째 평가 평균 점수 -->
+	<select id="avgEstimate6" resultType="com.team1.pro.member.estimate.MemberEstimateDTO">
+		SELECT NVL(AVG(SCORE), 0) AS SCORE, COUNT(*) AS COUNT
+		FROM PRO_MEMBER_ESTIMATE
+		WHERE MELID=6
+		  AND RECEIVE=#{usId}
+	</select>
+	
+	<!-- 7번째 평가 평균 점수 -->
+	<select id="avgEstimate7" resultType="com.team1.pro.member.estimate.MemberEstimateDTO">
+		SELECT NVL(AVG(SCORE), 0) AS SCORE, COUNT(*) AS COUNT
+		FROM PRO_MEMBER_ESTIMATE
+		WHERE MELID=7
+		  AND RECEIVE=#{usId}
+	</select>
+	
+	<!-- 평가 총 평균 점수 -->
+	<select id="avgEstimate" resultType="java.lang.Double">
+		SELECT NVL(AVG(SCORE), 0) AS SCORE
+		FROM PRO_MEMBER_ESTIMATE
+		WHERE RECEIVE=#{usId}
+	</select>
+	
+	<!-- 주로 사용한 기술 -->
+	<select id="manyUseSkill" resultType="java.lang.String">
+		SELECT SKNAME
+		FROM SKILL
+		WHERE SKID IN (SELECT SK.SKID
+		               FROM (SELECT S.SKID, ROWNUM
+		                     FROM (SELECT DISTINCT SKID, COUNT(*)OVER(PARTITION BY SKID) AS COUNT
+		                           FROM PRO_SKILL
+		                           WHERE PID IN (SELECT PID
+		                                         FROM PRO_PROGRESS
+		                                         WHERE PID IN (SELECT PID
+		                                                       FROM PRO_JOIN
+		                                                       WHERE USID=#{usId}
+		                                                         AND PJID NOT IN (SELECT PJID
+		                                                                          FROM PRO_EXIT
+		                                                                          WHERE PJID IN (SELECT PJID
+		                                                                                         FROM PRO_JOIN
+		                                                                                         WHERE USID=#{usId})))
+		                                         AND TO_DATE(PEDATE)>SYSDATE
+		                           )
+		                           ORDER BY COUNT DESC) S
+		                      <![CDATA[WHERE ROWNUM <= 3]]>) SK)
+	</select>
+	
+	<!-- 주로 활동한 지역 -->
+	<select id="manyActiveAddress" resultType="java.lang.String">
+		SELECT P.PADDRESS
+		FROM (SELECT DISTINCT PADDRESS, COUNT(*)OVER(PARTITION BY PADDRESS) AS COUNT
+		      FROM PRO_CREATE
+		      WHERE PID IN (SELECT PID
+		                    FROM PRO_PROGRESS
+		                    WHERE PID IN (SELECT PID
+		                                  FROM PRO_JOIN
+		                                  WHERE USID=#{usId}
+		                                    AND PJID NOT IN (SELECT PJID
+		                                                     FROM PRO_EXIT
+		                                                     WHERE PJID IN (SELECT PJID
+		                                                                    FROM PRO_JOIN
+		                                                                    WHERE USID=#{usId})))
+		                                                       AND TO_DATE(PEDATE)>SYSDATE)
+		      ORDER BY COUNT DESC) P
+		WHERE ROWNUM=1
+	</select>
+	
+	<!-- 프로젝트 예상 시작일 -->
+	<select id="startDate" resultType="java.lang.String">
+		SELECT TO_CHAR(ADD_MONTHS(SYSDATE, 1), 'YYYY"년 "MM"월 "DD"일 "') || ('09시 00분') AS STARTDATE
+		FROM DUAL
+	</select>
+	
+	<insert id="proJoin">
+		INSERT INTO PRO_JOIN(PJID, PJDATE, USID, PID)
+		VALUES (SEQ19.NEXTVAL, SYSDATE, #{usId}, #{pid})
+	</insert>
+	
+</mapper>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- SQL 구문 쓰기 위해 쓰는 구문임 -->
+<mapper namespace="com.team1.skill.IUserSkillDAO">
+	<select id="whatIsSkId" resultType="java.lang.String"> 
+		SELECT SKID
+		FROM USER_INTEREST_SKILL
+		WHERE USID=#{usId}
+	</select>
+</mapper>
+

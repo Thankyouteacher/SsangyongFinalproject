@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- SQL 구문 쓰기 위해 쓰는 구문임 -->
+<mapper namespace="com.team1.achievement.IAchievementDAO">
+	<select id="userAchievement" resultType="com.team1.achievement.AchievementDTO">
+		SELECT U.USID, U.USERID, U.NICKNAME, A.ACID, A.ACNAME, A.REQUIRE, A.REQUIRENUM, UA.GAINDATE
+		FROM USER_ACHIEVEMENT UA JOIN USERINSERT U
+		ON UA.USID = U.USID
+		JOIN ACHIEVEMENT A
+		ON UA.ACID = A.ACID
+		WHERE U.USID = #{usId}
+	</select>
+	
+	<select id="userNotAchievement" resultType="com.team1.achievement.AchievementDTO">
+		SELECT ACID, ACNAME, REQUIRE, REQUIRENUM
+		FROM ACHIEVEMENT
+		WHERE ACID NOT IN 
+		(SELECT A.ACID
+		FROM USER_ACHIEVEMENT UA JOIN USERINSERT U
+		ON UA.USID = U.USID
+		JOIN ACHIEVEMENT A
+		ON UA.ACID = A.ACID
+		WHERE U.USID = #{usId})
+	</select>
+	
+
+</mapper>
