@@ -76,7 +76,7 @@ $(document).ready(function()
 				
 				alert(pid);
 				
-				location.href= "projectnavi.action?pid=" + pid; 
+				location.href= "team_main.action?pid=" + pid; 
 			});
 		});
 </script>

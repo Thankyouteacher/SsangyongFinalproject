@@ -50,7 +50,7 @@
 				<div style="width: 25%; height: 50%; margin: 0 auto;">
 					<div style="width: 100%; height: 100%;">
 						<div style="height: 70%;" align="center">
-							<img src="<%=cp%>/profilePhoto/member${member.usId }/${member.usPhoto}" style="width: 70px; height: 70px; border-radius: 3Array5px; border: 2px solid #34314C;"onerror="this.src = '<%=cp %>/profilePhoto/default.png'">
+							<img src="<%=cp %>/profilePhoto/member${member.usId }/${member.usPhoto}" style="width: 50px; height: 50px; border-radius: 40px; margin: 12px auto;">
 						</div>
 						<div style="height: 30%;">
 							<div style="width: 25%; height: 100%; float: left;">
