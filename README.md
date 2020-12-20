@@ -8,7 +8,7 @@
   - 프로젝트의 기본적인 순서와 필요한 절차들을 제대로 알지 못하는 초급개발자들을 프로그램이 가이드해주고 그에 따라 쌓인 기록들이 프로젝트 경력이 될 수 있는 장점을 갖고 있다. 
   - mybatis framework 와 spring framework, ajax 등 다양한 기술들을 사용한 final project 이다. 
   
-  <image src='https://github.com/Thankyouteacher/SsangyongFinalproject/blob/master/images/main.png' width='300px' height='200px'/> <image src='https://github.com/Thankyouteacher/SsangyongFinalproject/blob/master/images/detail.png' width='300px' height='200px'/>
+  <image src='https://github.com/Thankyouteacher/SsangyongFinalproject/blob/master/images/main.png' width='450px' height='300px'/> <image src='https://github.com/Thankyouteacher/SsangyongFinalproject/blob/master/images/detail.png' width='450px' height='300px'/>
   
 - **구현 기능**
 
