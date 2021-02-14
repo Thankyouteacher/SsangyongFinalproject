@@ -79,7 +79,7 @@
   - **언어** : Java, html, css, javascript
   - **IDE** : Eclipse(plug in : Emmet), Oracle Developer
   - **기술** : ajax, jstl/EL, jquery, bootstrap, jsp/servlet, jdbc 
-  - **Server** : apache/tomcat ver.8.5 
+  - **Web/WAS** : apache/tomcat ver.8.5 
   - **DB** : Oracle 11g Express Edition 
   - **Framework** : spring, mybatis 
   - **API** : kakao 우편번호 API 
